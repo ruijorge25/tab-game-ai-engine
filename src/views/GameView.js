@@ -218,14 +218,44 @@ export function renderGameView(container) {
     if (isOnline) {
       // ONLINE: Sistema de seleção em duas etapas (LOCAL-FIRST)
       
-      // Se há peça selecionada, verifica se clicou num destino ou noutra peça
-      if (selectedPieceOnline) {
+      // ========== MODO ONLINE: Seleção Local + Envio Único ==========
+      
+      // ETAPA 1: Nenhuma peça selecionada ainda
+      if (!selectedPieceOnline) {
+        const boardData = engine.getBoard();
+        const piece = boardData[r]?.[c];
+        
+        // Validação: Tem de ser minha peça
+        if (!piece || piece.player !== 1) {
+          toast('Selecione uma das suas peças', 'warning');
+          return;
+        }
+        
+        // Calcula movimentos válidos LOCALMENTE (não envia nada ao servidor)
+        const validMoves = engine.getValidMoves ? engine.getValidMoves(r, c) : [];
+        console.log('[GameView] Selecionando peça LOCAL:', r, c, 'Movimentos:', validMoves);
+        
+        if (validMoves.length === 0) {
+          toast('Esta peça não pode mover com este dado', 'warning');
+          return;
+        }
+        
+        // Guarda peça e mostra destinos (TUDO LOCAL, SEM SERVIDOR)
+        selectedPieceOnline = { row: r, col: c };
+        board.highlightSelection(r, c, validMoves);
+        
+        return; // Aguarda clique no destino
+      }
+      
+      // ETAPA 2: Já tem peça selecionada, agora escolhe destino
+      else {
+        // Verifica se clicou num destino válido
         const currentHighlights = board.el.querySelectorAll('.is-target');
-        const isTarget = [...currentHighlights].some(cell => {
+        const isValidTarget = [...currentHighlights].some(cell => {
           return parseInt(cell.dataset.r) === r && parseInt(cell.dataset.c) === c;
         });
         
-        // Clicou na mesma peça = desseleciona
+        // CASO A: Clicou na mesma peça → Desseleciona
         if (selectedPieceOnline.row === r && selectedPieceOnline.col === c) {
           console.log('[GameView] Desselecionando peça');
           board.clearHighlights();
@@ -233,48 +263,45 @@ export function renderGameView(container) {
           return;
         }
         
-        // Clicou num destino válido = confirma jogada
-        if (isTarget) {
-          console.log('[GameView] Confirmando jogada:', selectedPieceOnline, '->', {row: r, col: c});
+        // CASO B: Clicou num destino válido → ENVIA JOGADA COMPLETA
+        if (isValidTarget) {
+          const fromR = selectedPieceOnline.row;
+          const fromC = selectedPieceOnline.col;
+          const toR = r;
+          const toC = c;
+          
+          console.log(`[GameView] Confirmando jogada: (${fromR},${fromC}) → (${toR},${toC})`);
+          
           root.classList.add('waiting-server');
+          board.clearHighlights();
+          
           try {
-            // Envia notify com a peça selecionada
-            // Se só houver 1 destino, servidor move automaticamente
-            // Se houver múltiplos destinos, servidor responde com 'selected' e aguarda 2º notify
-            await engine.moveSelectedTo(selectedPieceOnline.row, selectedPieceOnline.col);
-            board.clearHighlights();
+            // 🔥 ENVIA JOGADA COMPLETA DE UMA VEZ
+            await engine.movePiece(fromR, fromC, toR, toC);
             selectedPieceOnline = null;
           } catch (err) {
             root.classList.remove('waiting-server');
             toast(err.message || 'Jogada inválida', 'error');
             selectedPieceOnline = null;
           }
+          
           return;
         }
         
-        // Clicou noutra peça = troca seleção (cai no código abaixo)
+        // CASO C: Clicou noutra peça → Troca seleção
+        const boardData = engine.getBoard();
+        const newPiece = boardData[r]?.[c];
+        
+        if (newPiece && newPiece.player === 1) {
+          console.log('[GameView] Trocando seleção para nova peça');
+          board.clearHighlights();
+          selectedPieceOnline = null;
+          handleInteraction(r, c); // Recursão para selecionar nova peça
+        } else {
+          // Clicou numa casa inválida (nem peça nem destino)
+          toast('Clique num destino válido ou noutra peça', 'warning');
+        }
       }
-      
-      // ETAPA 1: Selecionar peça LOCALMENTE (não envia ao servidor ainda)
-      const boardData = engine.getBoard();
-      const piece = boardData[r]?.[c];
-      
-      if (!piece || piece.player !== 1) {
-        toast('Selecione uma das suas peças', 'warning');
-        return;
-      }
-      
-      // Calcula movimentos válidos LOCALMENTE
-      const validMoves = engine.getValidMoves ? engine.getValidMoves(r, c) : [];
-      console.log('[GameView] Selecionando peça:', r, c, 'Movimentos:', validMoves);
-      
-      if (validMoves.length === 0) {
-        toast('Esta peça não pode mover com este dado', 'warning');
-        return;
-      }
-      
-      // Mostra highlights LOCALMENTE
-      selectedPieceOnline = { row: r, col: c };
       board.highlightSelection(r, c, validMoves);
       
     } else {
@@ -336,30 +363,11 @@ export function renderGameView(container) {
     // Remove cursor de loading
     root.classList.remove('waiting-server');
     
-    // Highlights vindos do servidor (peça selecionada + destinos válidos)
-    if (engine.getHighlights) {
-      const highlights = engine.getHighlights();
-      console.log('[GameView] Highlights recebidos:', highlights, 'Step:', serverStep, 'PendingMove:', pendingMoveOnline);
-      
-      if (highlights.length > 0 && serverStep === 'to') {
-        // SERVIDOR QUER CONFIRMAÇÃO: Mostra peça + destinos
-        const origin = highlights[0];
-        const destinations = highlights.slice(1);
-        console.log('[GameView] Mostrando seleção:', origin, 'destinos:', destinations);
-        
-        // Mostra peça selecionada (laranja) e destinos (verde)
-        board.highlightSelection(origin.row, origin.col, destinations);
-        
-        // NÃO está pendente movimento final ainda
-        if (!selectedPieceOnline) {
-          selectedPieceOnline = origin;
-        }
-      } else {
-        // Sem highlights ou step='from' = limpa seleção (jogada foi feita ou nova rodada)
-        board.clearHighlights();
-        selectedPieceOnline = null;
-        pendingMoveOnline = false;
-      }
+    // 🔥 Limpa seleção local quando servidor responde
+    if (selectedPieceOnline) {
+      console.log('[SSE] Limpando seleção local após resposta do servidor');
+      board.clearHighlights();
+      selectedPieceOnline = null;
     }
 
     // Atualiza Dado

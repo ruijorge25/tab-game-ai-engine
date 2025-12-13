@@ -254,16 +254,13 @@ export function createOnlineEngine() {
       } finally {}
     },
 
-    async moveSelectedTo(r, c) {
-      // Recebe coordenadas VISUAIS
-      // Precisa enviar índice LÓGICO para o servidor
-      
+    // Método para enviar APENAS seleção de peça (raramente usado)
+    async selectPiece(r, c) {
       const logicalPos = this.transformCoords(r, c);
-      
       const idx = this.coordsToIndex(logicalPos.row, logicalPos.col);
-      if (idx === undefined || idx === null) {
-        throw new Error(`Coordenadas inválidas: (${r},${c})`);
-      }
+      
+      console.log(`[Online] Selecionando peça: cell=${idx} (visual: ${r},${c})`);
+      
       waitingForServer = true;
       try {
         await network.notify(myNick, myPassword, gameId, idx);
@@ -271,6 +268,36 @@ export function createOnlineEngine() {
         waitingForServer = false;
         throw err;
       }
+    },
+
+    // Método principal: Move peça de origem para destino
+    async movePiece(fromR, fromC, toR, toC) {
+      // Converte AMBAS as coordenadas para lógicas
+      const logicalFrom = this.transformCoords(fromR, fromC);
+      const logicalTo = this.transformCoords(toR, toC);
+      
+      const idxFrom = this.coordsToIndex(logicalFrom.row, logicalFrom.col);
+      const idxTo = this.coordsToIndex(logicalTo.row, logicalTo.col);
+      
+      console.log('=== ENVIANDO JOGADA COMPLETA ===');
+      console.log('Origem (visual):', {row: fromR, col: fromC}, '→ lógico:', logicalFrom, '→ índice:', idxFrom);
+      console.log('Destino (visual):', {row: toR, col: toC}, '→ lógico:', logicalTo, '→ índice:', idxTo);
+      console.log('================================');
+      
+      waitingForServer = true;
+      try {
+        // Envia em 2 etapas: primeiro a peça, depois o destino
+        await network.notify(myNick, myPassword, gameId, idxTo, idxFrom);
+      } catch (err) {
+        waitingForServer = false;
+        throw err;
+      }
+    },
+
+    // Compatibilidade com código antigo (delega para movePiece)
+    async moveSelectedTo(r, c) {
+      console.warn('[Online] moveSelectedTo está deprecated, use movePiece');
+      throw new Error('Use movePiece(fromR, fromC, toR, toC) em vez de moveSelectedTo');
     },
 
     async passTurn() {
@@ -303,10 +330,19 @@ export function createOnlineEngine() {
 
     coordsToIndex(r, c) {
       const cols = this.getColumns();
-      if (r === 3) return c;
-      if (r === 2) return cols + (cols - 1 - c);
-      if (r === 1) return (2 * cols) + c;
-      if (r === 0) return (3 * cols) + (cols - 1 - c);
+      
+      // 🔍 Adiciona validação:
+      if (r < 0 || r > 3 || c < 0 || c >= cols) {
+        console.error(`[coordsToIndex] Coords inválidas: r=${r}, c=${c}, cols=${cols}`);
+        return 0; // Fallback seguro
+      }
+      
+      if (r === 3) return c;                              // Linha 0 lógica
+      if (r === 2) return cols + (cols - 1 - c);         // Linha 1 lógica
+      if (r === 1) return (2 * cols) + c;                // Linha 2 lógica
+      if (r === 0) return (3 * cols) + (cols - 1 - c);   // Linha 3 lógica
+      
+      console.error(`[coordsToIndex] Linha inesperada: ${r}`);
       return 0;
     }
   };

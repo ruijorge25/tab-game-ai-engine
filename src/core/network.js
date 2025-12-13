@@ -53,8 +53,15 @@ export const network = {
     return post('roll', { nick, password, game });
   },
 
-  async notify(nick, password, game, cell) {
-    // O servidor espera o campo 'cell' (não 'move')
+  async notify(nick, password, game, cell, fromCell = null) {
+    // Se fromCell for fornecido, enviamos 2 notifies em sequência
+    if (fromCell !== null) {
+      // 1º notify: Seleciona a peça
+      await post('notify', { nick, password, game, cell: fromCell });
+      // Pequeno delay para servidor processar
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    // 2º notify (ou único): Move/seleciona destino
     return post('notify', { nick, password, game, cell });
   },
 
