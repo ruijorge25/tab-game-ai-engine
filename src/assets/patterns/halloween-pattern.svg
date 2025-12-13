@@ -1,0 +1,131 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradiente roxo profundo -->
+    <linearGradient id="purpleBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0033;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2d0052;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a0033;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Padrão geométrico árabe principal (baseado na imagem) -->
+    <pattern id="islamicStar" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <g transform="translate(50, 50)">
+        <!-- Estrela de 8 pontas (comum na arte islâmica) -->
+        <g opacity="0.2" fill="none" stroke="#9370db" stroke-width="1.2">
+          <!-- Círculo externo -->
+          <circle r="35"/>
+          
+          <!-- Estrela -->
+          <path d="M 0 -35 L 10 -10 L 35 0 L 10 10 L 0 35 L -10 10 L -35 0 L -10 -10 Z"/>
+          
+          <!-- Octógono interno -->
+          <path d="M 0 -20 L 14 -14 L 20 0 L 14 14 L 0 20 L -14 14 L -20 0 L -14 -14 Z"/>
+          
+          <!-- Centro -->
+          <circle r="8"/>
+          <circle r="3" fill="#ff8c00" opacity="0.5"/>
+        </g>
+      </g>
+    </pattern>
+    
+    <!-- Padrão de losangos entrelaçados -->
+    <pattern id="arabicDiamonds" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <g transform="translate(30, 30)">
+        <path d="M 0 -25 L 25 0 L 0 25 L -25 0 Z" 
+              fill="none" stroke="#663399" stroke-width="0.8" opacity="0.25"/>
+        <path d="M 0 -15 L 15 0 L 0 15 L -15 0 Z" 
+              fill="none" stroke="#9370db" stroke-width="0.6" opacity="0.3"/>
+        <circle r="2" fill="#ff8c00" opacity="0.4"/>
+      </g>
+    </pattern>
+    
+    <!-- Glow místico -->
+    <radialGradient id="mysticGlow">
+      <stop offset="0%" style="stop-color:#9370db;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#663399;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#1a0033;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Fundo base -->
+  <rect width="400" height="400" fill="url(#purpleBg)"/>
+  
+  <!-- Padrão islâmico principal -->
+  <rect width="400" height="400" fill="url(#islamicStar)"/>
+  
+  <!-- Camada de losangos -->
+  <rect width="400" height="400" fill="url(#arabicDiamonds)"/>
+  
+  <!-- Ornamentos grandes (4 cantos) -->
+  <g opacity="0.25" fill="none" stroke="#9370db" stroke-width="1.5">
+    <!-- Canto superior esquerdo -->
+    <g transform="translate(60, 60)">
+      <circle r="30"/>
+      <circle r="20"/>
+      <path d="M 0 -30 L 0 -20 M 0 30 L 0 20 M -30 0 L -20 0 M 30 0 L 20 0"/>
+      <path d="M -21 -21 L -15 -15 M 21 21 L 15 15 M -21 21 L -15 15 M 21 -21 L 15 -15"/>
+      <circle r="5" fill="#ff8c00" opacity="0.6"/>
+    </g>
+    
+    <!-- Canto superior direito -->
+    <g transform="translate(340, 60)">
+      <path d="M 0 -25 L 18 -18 L 25 0 L 18 18 L 0 25 L -18 18 L -25 0 L -18 -18 Z"/>
+      <path d="M 0 -15 L 11 -11 L 15 0 L 11 11 L 0 15 L -11 11 L -15 0 L -11 -11 Z"/>
+      <circle r="5" fill="#ff8c00" opacity="0.6"/>
+    </g>
+    
+    <!-- Canto inferior esquerdo -->
+    <g transform="translate(60, 340)">
+      <path d="M 0 -28 L 20 -20 L 28 0 L 20 20 L 0 28 L -20 20 L -28 0 L -20 -20 Z"/>
+      <circle r="15"/>
+      <circle r="5" fill="#ff8c00" opacity="0.6"/>
+    </g>
+    
+    <!-- Canto inferior direito -->
+    <g transform="translate(340, 340)">
+      <circle r="28"/>
+      <path d="M 0 -28 L 0 28 M -28 0 L 28 0 M -20 -20 L 20 20 M -20 20 L 20 -20"/>
+      <circle r="8"/>
+      <circle r="3" fill="#ff8c00" opacity="0.6"/>
+    </g>
+  </g>
+  
+  <!-- Elementos místicos centrais -->
+  <g transform="translate(200, 200)">
+    <!-- Mandala central sutil -->
+    <g opacity="0.15" fill="none" stroke="#ff8c00" stroke-width="1">
+      <circle r="50"/>
+      <circle r="40"/>
+      <path d="M 0 -50 L 0 -40 M 0 50 L 0 40 M -50 0 L -40 0 M 50 0 L 40 0"/>
+      <path d="M -35 -35 L -28 -28 M 35 35 L 28 28 M -35 35 L -28 28 M 35 -35 L 28 -28"/>
+    </g>
+    
+    <!-- Estrela mística -->
+    <g opacity="0.2" fill="none" stroke="#9370db" stroke-width="1.2">
+      <path d="M 0 -30 L 7 -8 L 30 0 L 7 8 L 0 30 L -7 8 L -30 0 L -7 -8 Z"/>
+    </g>
+  </g>
+  
+  <!-- Padrão de entrelaçamento (interlace) nas bordas -->
+  <g opacity="0.18" fill="none" stroke="#663399" stroke-width="1">
+    <!-- Topo -->
+    <path d="M 20 20 Q 40 10, 60 20 T 100 20 T 140 20 T 180 20 T 220 20 T 260 20 T 300 20 T 340 20 T 380 20"/>
+    
+    <!-- Direita -->
+    <path d="M 380 40 Q 370 60, 380 80 T 380 120 T 380 160 T 380 200 T 380 240 T 380 280 T 380 320 T 380 360"/>
+    
+    <!-- Baixo -->
+    <path d="M 360 380 Q 340 370, 320 380 T 280 380 T 240 380 T 200 380 T 160 380 T 120 380 T 80 380 T 40 380"/>
+    
+    <!-- Esquerda -->
+    <path d="M 20 360 Q 10 340, 20 320 T 20 280 T 20 240 T 20 200 T 20 160 T 20 120 T 20 80 T 20 40"/>
+  </g>
+  
+  <!-- Detalhes em laranja (acentos místicos) -->
+  <g opacity="0.3">
+    <circle cx="100" cy="150" r="3" fill="#ff8c00"/>
+    <circle cx="300" cy="250" r="2.5" fill="#ff8c00"/>
+    <circle cx="150" cy="320" r="3" fill="#ff8c00"/>
+    <circle cx="280" cy="120" r="2" fill="#ff8c00"/>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="arabicFlower" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <!-- Flor árabe central -->
+      <g transform="translate(100, 100)" opacity="0.15">
+        <!-- Pétalas (8 pétalas em círculo) -->
+        <g fill="none" stroke="#CBB279" stroke-width="1.2">
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(0)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(45)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(90)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(135)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(180)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(225)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(270)"/>
+          <ellipse cx="0" cy="-35" rx="12" ry="24" transform="rotate(315)"/>
+        </g>
+        
+        <!-- Centro da flor -->
+        <circle cx="0" cy="0" r="8" fill="none" stroke="#D4AF37" stroke-width="1.5"/>
+        <circle cx="0" cy="0" r="4" fill="#D4AF37" opacity="0.3"/>
+        
+        <!-- Anel externo decorativo -->
+        <circle cx="0" cy="0" r="50" fill="none" stroke="#CBB279" stroke-width="0.8" stroke-dasharray="3,6"/>
+      </g>
+      
+      <!-- Linhas de conexão subtis nos cantos -->
+      <g opacity="0.08">
+        <line x1="0" y1="0" x2="30" y2="30" stroke="#CBB279" stroke-width="1"/>
+        <line x1="200" y1="0" x2="170" y2="30" stroke="#CBB279" stroke-width="1"/>
+        <line x1="0" y1="200" x2="30" y2="170" stroke="#CBB279" stroke-width="1"/>
+        <line x1="200" y1="200" x2="170" y2="170" stroke="#CBB279" stroke-width="1"/>
+      </g>
+    </pattern>
+  </defs>
+  
+  <!-- Aplica o padrão -->
+  <rect width="400" height="400" fill="url(#arabicFlower)"/>
+</svg>

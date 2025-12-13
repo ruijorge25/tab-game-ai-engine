@@ -1,0 +1,55 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="royal" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <!-- Moldura decorativa central -->
+      <rect x="75" y="75" width="50" height="50" fill="none" stroke="#FFD700" stroke-width="1.5" opacity="0.25"/>
+      <rect x="70" y="70" width="60" height="60" fill="none" stroke="#DDA0DD" stroke-width="0.8" opacity="0.2"/>
+      
+      <!-- Flor de Lis central -->
+      <g transform="translate(100, 100)" opacity="0.2">
+        <path d="M 0,-12 L -3,-6 L -6,-8 L -4,-3 L -8,-2 L -4,0 L -8,2 L -4,3 L -6,8 L -3,6 L 0,12 L 3,6 L 6,8 L 4,3 L 8,2 L 4,0 L 8,-2 L 4,-3 L 6,-8 L 3,-6 Z" 
+              fill="#FFD700"/>
+      </g>
+      
+      <!-- Cantos decorativos -->
+      <g transform="translate(25, 25)" opacity="0.18">
+        <circle cx="0" cy="0" r="8" fill="none" stroke="#DDA0DD" stroke-width="1"/>
+        <path d="M -4,0 L 4,0 M 0,-4 L 0,4" stroke="#FFD700" stroke-width="1.2"/>
+      </g>
+      
+      <g transform="translate(175, 25)" opacity="0.18">
+        <circle cx="0" cy="0" r="8" fill="none" stroke="#DDA0DD" stroke-width="1"/>
+        <path d="M -4,0 L 4,0 M 0,-4 L 0,4" stroke="#FFD700" stroke-width="1.2"/>
+      </g>
+      
+      <g transform="translate(25, 175)" opacity="0.18">
+        <circle cx="0" cy="0" r="8" fill="none" stroke="#DDA0DD" stroke-width="1"/>
+        <path d="M -4,0 L 4,0 M 0,-4 L 0,4" stroke="#FFD700" stroke-width="1.2"/>
+      </g>
+      
+      <g transform="translate(175, 175)" opacity="0.18">
+        <circle cx="0" cy="0" r="8" fill="none" stroke="#DDA0DD" stroke-width="1"/>
+        <path d="M -4,0 L 4,0 M 0,-4 L 0,4" stroke="#FFD700" stroke-width="1.2"/>
+      </g>
+      
+      <!-- Arabescos -->
+      <path d="M 100 20 Q 110 25, 100 30" stroke="#9370DB" stroke-width="1" fill="none" opacity="0.15"/>
+      <path d="M 100 170 Q 110 175, 100 180" stroke="#9370DB" stroke-width="1" fill="none" opacity="0.15"/>
+      <path d="M 20 100 Q 25 110, 30 100" stroke="#9370DB" stroke-width="1" fill="none" opacity="0.15"/>
+      <path d="M 170 100 Q 175 110, 180 100" stroke="#9370DB" stroke-width="1" fill="none" opacity="0.15"/>
+      
+      <!-- Joias decorativas -->
+      <circle cx="50" cy="50" r="2.5" fill="#FFD700" opacity="0.3"/>
+      <circle cx="150" cy="50" r="2.5" fill="#DA70D6" opacity="0.25"/>
+      <circle cx="50" cy="150" r="2.5" fill="#DA70D6" opacity="0.25"/>
+      <circle cx="150" cy="150" r="2.5" fill="#FFD700" opacity="0.3"/>
+      
+      <!-- Padrão de diamante -->
+      <path d="M 40 100 L 45 95 L 50 100 L 45 105 Z" fill="#FFD700" opacity="0.15"/>
+      <path d="M 150 100 L 155 95 L 160 100 L 155 105 Z" fill="#DDA0DD" opacity="0.15"/>
+      <path d="M 100 40 L 105 35 L 110 40 L 105 45 Z" fill="#DA70D6" opacity="0.15"/>
+      <path d="M 100 160 L 105 155 L 110 160 L 105 165 Z" fill="#FFD700" opacity="0.15"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="url(#royal)"/>
+</svg>

@@ -1,0 +1,19 @@
+/* Efeitos utilitários para componentes */
+.float-sm { animation: floatSm 4s ease-in-out infinite; }
+@keyframes floatSm {
+  0% { transform: translateY(0) }
+  50%{ transform: translateY(-6px) }
+  100%{ transform: translateY(0) }
+}
+
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse {
+  0%{ transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 211, 238, .35)}
+  70%{ transform: scale(1.01); box-shadow: 0 0 0 16px rgba(34, 211, 238, 0)}
+  100%{ transform: scale(1) }
+}
+
+/*Desliga animação de float*/
+.no-animations .float-sm {
+  animation: none;
+}

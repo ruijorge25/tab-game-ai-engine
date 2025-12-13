@@ -1,0 +1,33 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="waves" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <!-- Ondas -->
+      <path d="M 0 60 Q 25 45, 50 60 T 100 60 T 150 60 T 200 60" 
+            stroke="#40E0D0" stroke-width="1.5" fill="none" opacity="0.3"/>
+      <path d="M 0 80 Q 25 65, 50 80 T 100 80 T 150 80 T 200 80" 
+            stroke="#20B2AA" stroke-width="1.2" fill="none" opacity="0.25"/>
+      <path d="M 0 100 Q 30 85, 60 100 T 120 100 T 180 100 T 200 100" 
+            stroke="#40E0D0" stroke-width="1" fill="none" opacity="0.2"/>
+      
+      <path d="M 0 140 Q 25 125, 50 140 T 100 140 T 150 140 T 200 140" 
+            stroke="#40E0D0" stroke-width="1.5" fill="none" opacity="0.3"/>
+      <path d="M 0 160 Q 25 145, 50 160 T 100 160 T 150 160 T 200 160" 
+            stroke="#20B2AA" stroke-width="1.2" fill="none" opacity="0.25"/>
+      
+      <!-- Bolhas -->
+      <circle cx="30" cy="30" r="3" fill="#40E0D0" opacity="0.2"/>
+      <circle cx="70" cy="50" r="2" fill="#48D1CC" opacity="0.15"/>
+      <circle cx="120" cy="25" r="2.5" fill="#40E0D0" opacity="0.18"/>
+      <circle cx="160" cy="45" r="1.5" fill="#20B2AA" opacity="0.2"/>
+      <circle cx="180" cy="120" r="2" fill="#40E0D0" opacity="0.2"/>
+      <circle cx="40" cy="170" r="2.5" fill="#48D1CC" opacity="0.15"/>
+      <circle cx="90" cy="185" r="1.8" fill="#40E0D0" opacity="0.18"/>
+      
+      <!-- Escamas de peixe -->
+      <circle cx="150" cy="110" r="8" fill="none" stroke="#20B2AA" stroke-width="0.8" opacity="0.15"/>
+      <circle cx="158" cy="110" r="8" fill="none" stroke="#20B2AA" stroke-width="0.8" opacity="0.15"/>
+      <circle cx="154" cy="117" r="8" fill="none" stroke="#40E0D0" stroke-width="0.8" opacity="0.12"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="url(#waves)"/>
+</svg>

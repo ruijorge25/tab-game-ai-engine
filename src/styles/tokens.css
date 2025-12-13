@@ -1,0 +1,17 @@
+﻿/* Design Tokens Tâb  */
+:root {
+  --sand:#CBB279; --amber:#C17F59; --terracotta:#A35F3B;
+  --turquoise:#1CA094; --ink:#0E1212; --olive:#1F2828;
+  --cream:#F8F5E1; --red:#B83E3E; --blue:#2D5D7B;
+  --bg-primary:#0f1514; --bg-card:rgba(31,40,40,0.85);
+  --text-primary:var(--cream); --text-secondary:var(--sand);
+  --border-primary:var(--sand); --accent-gold:#D4AF37;
+  --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:32px;
+  --r-sm:8px; --r-md:16px; --r-lg:24px;
+  --shadow-soft:0 2px 8px rgba(0,0,0,0.2);
+  --shadow-elevated:0 12px 40px rgba(0,0,0,0.35);
+  --shadow-glow-gold:0 0 32px rgba(212,175,55,0.5);
+  --font-display:'Cinzel Decorative',serif;
+  --font-body:'Poppins',system-ui,sans-serif;
+  --transition-base:250ms ease;
+}
