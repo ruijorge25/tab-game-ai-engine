@@ -519,7 +519,7 @@ export function renderGameView(container) {
     await new Promise(r => setTimeout(r, 1500));
     try {
       const diceVal = engine.rollDice();
-      toast(`Computador rolou ${diceVal}!`, 'info');
+      toast(`Computador tirou ${diceVal}!`, 'info');
       playSound('flip');
       updateHUDLocal();
       await new Promise(r => setTimeout(r, 800));
@@ -551,8 +551,14 @@ export function renderGameView(container) {
 
   function localCheckAutoPass(player) {
     if (engine.getCurrentPlayer() === player && engine.getDice() !== null && engine.canPass()) {
-      const pName = player === 1 ? 'Você' : 'Computador';
-      toast(`${pName} sem jogadas. A passar...`, 'info');
+      
+      // ALTERADO: Define a mensagem personalizada para o jogador
+      const msg = player === 1 
+        ? 'Sem jogadas disponiveis. A passar...' 
+        : 'Computador sem jogadas. A passar...';
+      
+      toast(msg, 'info');
+      
       setTimeout(() => {
         engine.passTurn();
         updateHUDLocal();

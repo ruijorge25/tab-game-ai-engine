@@ -80,6 +80,8 @@ export function renderMenuView(container) {
               <option value="7">7 colunas</option>
               <option value="9" selected>9 colunas</option>
               <option value="11">11 colunas</option>
+              <option value="13">13 colunas</option>
+              <option value="15">15 colunas</option>
             </select>
           </div>
           

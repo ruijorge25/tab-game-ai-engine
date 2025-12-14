@@ -2782,3 +2782,8 @@ body[data-theme="christmas"].no-animations .btn-primary {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+option {
+  background-color: #1f2828; /* Cor escura de fundo para as opções */
+  color: var(--sand);        /* Cor clara para o texto */
+}
