@@ -286,11 +286,12 @@ export function renderGameView(container) {
           board.clearHighlights();
           
           try {
-            // 🔥 ENVIA JOGADA COMPLETA DE UMA VEZ
+            // Envia jogada completa; mensagens de erro serão confirmadas pelo servidor
             await engine.movePiece(fromR, fromC, toR, toC);
             selectedPieceOnline = null;
           } catch (err) {
-            toast(err.message || 'Jogada inválida', 'error');
+            // Evitar mostrar erro imediato para não conflitar com aceite posterior do servidor
+            console.error('[GameView] Erro ao enviar jogada:', err);
             selectedPieceOnline = null;
           } finally {
             isProcessingMove = false; // ← Desbloqueia SEMPRE
@@ -347,14 +348,22 @@ export function renderGameView(container) {
     }
   });
 
-  // Listener no holder do dado (Código original mantido)
+  // Listener no holder do dado: evitar mensagens enquanto aguardamos pelo servidor
   diceHolder.addEventListener('click', () => {
-    if (diceBtn && diceBtn.classList.contains('is-disabled')) {
-      if (engine.getCurrentPlayer() !== 1) {
-        toast(isOnline ? 'Vez do adversário.' : 'Aguarde, é a vez do computador.', 'info');
-      } else if (engine.getDice() != null) {
-        toast('Tem de mover primeiro. Há jogadas disponíveis!', 'warning');
+    if (root.classList.contains('waiting-server')) return;
+    if (!diceBtn) return;
+    if (diceBtn.classList.contains('is-disabled')) {
+      const isMyTurn = engine.getCurrentPlayer() === 1;
+      const diceObj = (typeof engine.getDiceObj === 'function') ? engine.getDiceObj() : null;
+      const hasDice = engine.getDice() != null;
+      const extraTurn = isOnline && !!diceObj && diceObj.keepPlaying === true;
+      if (!isMyTurn) {
+        toast(isOnline ? 'Não é a sua vez.' : 'Aguarde, é a vez do computador.', 'info');
+      } else if (hasDice && !extraTurn) {
+        // Só avisa para concluir jogada se não houver jogada extra (4 ou 6)
+        toast('Tem de concluir a jogada antes de rolar.', 'warning');
       }
+      // Se houver extraTurn, não mostra aviso — o botão deve estar ativo para re-rolar
     }
   });
 
@@ -452,22 +461,10 @@ export function renderGameView(container) {
     }
 
     // 3. Lógica do Botão Passar e Auto-Pass
-    // Determina corretamente se há movimentos válidos mesmo sem `hasAnyValidMove()`
-    let hasMoves;
+    // Determinar jogadas disponíveis apenas via API dedicada quando existir
+    let hasMoves = true;
     if (typeof engine.hasAnyValidMove === 'function') {
       hasMoves = !!engine.hasAnyValidMove();
-    } else {
-      // Fallback: verifica células selecionáveis e os seus destinos
-      try {
-        const selectable = typeof engine.getSelectableCells === 'function' ? engine.getSelectableCells() : [];
-        hasMoves = selectable.some(cell => {
-          const moves = typeof engine.getValidMoves === 'function' ? engine.getValidMoves(cell.row, cell.col) : [];
-          return Array.isArray(moves) && moves.length > 0;
-        });
-      } catch (_) {
-        // Se algo falhar, assume que não há movimentos para evitar bloquear re-lançamentos indevidos
-        hasMoves = false;
-      }
     }
     const diceValue = data.dice?.value;
     const keepPlaying = data.dice?.keepPlaying; // (1, 4, 6)
@@ -484,28 +481,10 @@ export function renderGameView(container) {
         shouldAutoPass = true;
         autoPassReason = 'Sem jogadas disponíveis. Passando a vez...';
 
-    } else if (isMyTurn && data.dice && !hasMoves && diceValue !== 1 && data.step === 'from') {
-        // CASO B: Início de jogo, sem peças na mesa e dado != 1
-        
-        if (keepPlaying) {
-            // CORREÇÃO: Saiu 4 ou 6. Não tenho peças para mover, mas tenho jogada extra.
-            // Ação: DEVO LANÇAR O DADO NOVAMENTE.
-            
-            canPass = false; // Bloqueia o Passar para não perder a vez
-            shouldAutoPass = false;
-            
-            // O botão do dado JÁ ESTÁ ATIVO pela lógica do passo 2 (keepPlaying=true)
-            // Apenas avisamos o utilizador
-            setTimeout(() => {
-                 toast(`Saiu ${diceValue}! Sem peças para mover. Lança o dado novamente.`, 'info');
-            }, 600);
-            
-        } else {
-            // Saiu 2 ou 3. Perdi a vez.
-            canPass = true;
-            shouldAutoPass = true;
-            autoPassReason = `Precisas de um 1 (Tâb) para sair.`;
-        }
+    } else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from' && !hasMoves) {
+      // Sem jogada extra e sem movimentos confirmados
+      canPass = true;
+      shouldAutoPass = false;
 
     } else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from') {
         // CASO C: Bloqueado a meio do jogo sem extra turn (dado 2 ou 3)
