@@ -213,8 +213,17 @@ export function renderGameView(container) {
   let pendingMoveOnline = false; // Flag para evitar jogadas automáticas
   let serverStep = 'from'; // Rastreia o step do servidor ('from' ou 'to')
 
+  // Proteção contra race condition (cliques duplos)
+  let isProcessingMove = false;
+
   // Função Unificada de Interação (Select/Move)
   async function handleInteraction(r, c) {
+    // 🔥 PROTEÇÃO CRÍTICA
+    if (isProcessingMove) {
+      console.log('[GameView] Movimento em processamento, aguarde...');
+      return;
+    }
+    
     if (isOnline) {
       // ONLINE: Sistema de seleção em duas etapas (LOCAL-FIRST)
       
@@ -272,6 +281,7 @@ export function renderGameView(container) {
           
           console.log(`[GameView] Confirmando jogada: (${fromR},${fromC}) → (${toR},${toC})`);
           
+          isProcessingMove = true; // ← Bloqueia
           root.classList.add('waiting-server');
           board.clearHighlights();
           
@@ -280,9 +290,11 @@ export function renderGameView(container) {
             await engine.movePiece(fromR, fromC, toR, toC);
             selectedPieceOnline = null;
           } catch (err) {
-            root.classList.remove('waiting-server');
             toast(err.message || 'Jogada inválida', 'error');
             selectedPieceOnline = null;
+          } finally {
+            isProcessingMove = false; // ← Desbloqueia SEMPRE
+            root.classList.remove('waiting-server');
           }
           
           return;
@@ -297,12 +309,12 @@ export function renderGameView(container) {
           board.clearHighlights();
           selectedPieceOnline = null;
           handleInteraction(r, c); // Recursão para selecionar nova peça
+          return; // 🔥 CRÍTICO: Para execução aqui!
         } else {
           // Clicou numa casa inválida (nem peça nem destino)
           toast('Clique num destino válido ou noutra peça', 'warning');
         }
       }
-      board.highlightSelection(r, c, validMoves);
       
     } else {
       // LOCAL: Executa lógica original
@@ -348,6 +360,7 @@ export function renderGameView(container) {
 
   diceHolder.appendChild(dice);
   diceBtn = dice.querySelector('button');
+  dice.dataset.lastValue = ''; // 🔥 INICIALIZA AQUI
 
   // 5. UPDATE ONLINE (SSE)
   function onServerUpdate(data) {
@@ -849,6 +862,21 @@ export function renderGameView(container) {
   window.cleanupGameView = () => {
     document.removeEventListener('keydown', handleKeyPress);
     document.removeEventListener('click', handleClickOutside, true);
+    
+    // 🔥 Fecha SSE
     if (unsubscribeSSE) unsubscribeSSE();
+    
+    // 🔥 Remove popovers
+    if (audioPopover) audioPopover.remove();
+    document.querySelectorAll('.shortcuts-popover').forEach(p => p.remove());
+    
+    // 🔥 Limpa toasts
+    document.querySelectorAll('.toast').forEach(t => {
+      if (t.dataset.timeoutId) clearTimeout(parseInt(t.dataset.timeoutId));
+      t.remove();
+    });
+    
+    // 🔥 Remove cursor de loading
+    root.classList.remove('waiting-server');
   };
 }

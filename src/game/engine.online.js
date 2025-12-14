@@ -141,9 +141,22 @@ export function createOnlineEngine() {
     
     // Helper para transformar coordenadas Lógicas <-> Visuais
     transformCoords(r, c) {
-      const initial = cachedInitial || serverState?.initial;
-      const amIInitial = (initial === myNick);
       const cols = this.getColumns();
+      
+      // 🔥 VALIDAÇÃO CRÍTICA
+      if (r < 0 || r > 3 || c < 0 || c >= cols) {
+        console.error(`[transformCoords] Coords inválidas: r=${r}, c=${c}, cols=${cols}`);
+        return { row: 0, col: 0 }; // Fallback seguro
+      }
+      
+      const initial = cachedInitial || serverState?.initial;
+      
+      if (!initial) {
+        console.warn('[transformCoords] Initial desconhecido, usando coords normais');
+        return { row: r, col: c }; // Assume normal se servidor não enviou
+      }
+      
+      const amIInitial = (initial === myNick);
 
       if (amIInitial) {
         // Sou Player 1 (Initial): Vejo tabuleiro normal (Minhas peças em 3)
@@ -151,7 +164,16 @@ export function createOnlineEngine() {
       } else {
         // Sou Player 2 (Opponent): Vejo tabuleiro rodado (Minhas peças em 3)
         // Lógica: Row 0 -> Visual 3. Row 3 -> Visual 0.
-        return { row: 3 - r, col: (cols - 1) - c };
+        const newR = 3 - r;
+        const newC = (cols - 1) - c;
+        
+        // 🔥 VALIDA RESULTADO
+        if (newR < 0 || newR > 3 || newC < 0 || newC >= cols) {
+          console.error(`[transformCoords] Resultado inválido: (${r},${c}) → (${newR},${newC})`);
+          return { row: r, col: c }; // Fallback: retorna original
+        }
+        
+        return { row: newR, col: newC };
       }
     },
 
