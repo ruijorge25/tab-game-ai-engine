@@ -20,7 +20,7 @@ import {
 
 import { createEngineAdapter } from '../game/engine.adapter.js';
 import { createTabEngine } from '../game/engine.tab.js';
-import { createOnlineEngine } from '../game/engine.online.js'; // NOVO
+import { createOnlineEngine } from '../game/engine.online.js'; 
 import { getBestMoveWithHint, findBestMove } from '../game/ai.js';
 
 export function renderGameView(container) {
@@ -29,7 +29,6 @@ export function renderGameView(container) {
   let unsubscribeSSE = null;
 
   // 1. DECISÃO DE MOTOR
-  // Se existir um ID de jogo na sessão, assumimos Modo Online
   if (state.session.gameId) {
     isOnline = true;
     engine = createOnlineEngine();
@@ -43,13 +42,12 @@ export function renderGameView(container) {
     console.log('[GameView] Modo Local Ativo.');
   }
   
-  // Nome do jogador (Sessão ou LocalStorage)
   const username = isOnline ? state.session.nick : (localStorage.getItem('tab_username') || 'Utilizador');
 
   const root = document.createElement('div');
   root.className = 'game-scene';
 
-  // 2. HTML (Mantendo a estrutura original com Popovers)
+  // 2. HTML (Botão Passar REMOVIDO)
   root.innerHTML = `
     <header class="hud">
       <div class="logo">Tâb</div>
@@ -80,8 +78,6 @@ export function renderGameView(container) {
           </svg>
         </button>
         
-        <button class="btn btn-secondary btn-small" id="btn-pass" style="display:none; margin-right:8px;">Passar</button>
-
         ${!isOnline ? `
         <button class="btn-icon" id="btn-hints" title="Dicas">
           <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -130,17 +126,15 @@ export function renderGameView(container) {
 
   const boardPane = root.querySelector('.board-pane');
   const diceHolder = root.querySelector('#dice-holder');
-  const btnPass = root.querySelector('#btn-pass');
+  // const btnPass = root.querySelector('#btn-pass'); // REMOVIDO
 
   let diceBtn; 
-
-  // Contadores de estatísticas (Usados principalmente no modo Local)
   let humanMoves = 0;
   let humanCaptures = 0;
   let aiMoves = 0;
   let aiCaptures = 0;
 
-  // 3. RECUPERAR POPOVER DE ÁUDIO (Código Original)
+  // 3. RECUPERAR POPOVER DE ÁUDIO (Mantido igual)
   const audioPopover = document.createElement('div');
   audioPopover.id = 'game-audio-popover';
   audioPopover.className = 'audio-popover';
@@ -184,7 +178,6 @@ export function renderGameView(container) {
   const sliderWrapper = audioPopover.querySelector('#game-volume-control-wrapper');
   const btnMuteSFX = audioPopover.querySelector('#game-btn-mute-sfx');
 
-  // Lógica do Popover de Áudio
   btnMuteMusic.onclick = (e) => {
     e.stopPropagation(); 
     toggleMusic();
@@ -207,40 +200,27 @@ export function renderGameView(container) {
   
   sliderVolume.onclick = (e) => e.stopPropagation();
 
-  // 4. LÓGICA DE JOGO (Híbrida)
-  
-  let selectedPieceOnline = null; // Guarda a peça selecionada no modo online
-  let pendingMoveOnline = false; // Flag para evitar jogadas automáticas
-  let serverStep = 'from'; // Rastreia o step do servidor ('from' ou 'to')
-
-  // Proteção contra race condition (cliques duplos)
+  // 4. LÓGICA DE JOGO
+  let selectedPieceOnline = null; 
   let isProcessingMove = false;
 
-  // Função Unificada de Interação (Select/Move)
   async function handleInteraction(r, c) {
-    // 🔥 PROTEÇÃO CRÍTICA
     if (isProcessingMove) {
       console.log('[GameView] Movimento em processamento, aguarde...');
       return;
     }
     
     if (isOnline) {
-      // ONLINE: Sistema de seleção em duas etapas (LOCAL-FIRST)
-      
-      // ========== MODO ONLINE: Seleção Local + Envio Único ==========
-      
       // ETAPA 1: Nenhuma peça selecionada ainda
       if (!selectedPieceOnline) {
         const boardData = engine.getBoard();
         const piece = boardData[r]?.[c];
         
-        // Validação: Tem de ser minha peça
         if (!piece || piece.player !== 1) {
           toast('Selecione uma das suas peças', 'warning');
           return;
         }
         
-        // Calcula movimentos válidos LOCALMENTE (não envia nada ao servidor)
         const validMoves = engine.getValidMoves ? engine.getValidMoves(r, c) : [];
         console.log('[GameView] Selecionando peça LOCAL:', r, c, 'Movimentos:', validMoves);
         
@@ -249,76 +229,62 @@ export function renderGameView(container) {
           return;
         }
         
-        // Guarda peça e mostra destinos (TUDO LOCAL, SEM SERVIDOR)
         selectedPieceOnline = { row: r, col: c };
         board.highlightSelection(r, c, validMoves);
-        
-        return; // Aguarda clique no destino
+        return; 
       }
-      
-      // ETAPA 2: Já tem peça selecionada, agora escolhe destino
+      // ETAPA 2: Já tem peça selecionada
       else {
-        // Verifica se clicou num destino válido
         const currentHighlights = board.el.querySelectorAll('.is-target');
         const isValidTarget = [...currentHighlights].some(cell => {
           return parseInt(cell.dataset.r) === r && parseInt(cell.dataset.c) === c;
         });
         
-        // CASO A: Clicou na mesma peça → Desseleciona
+        // CASO A: Desseleciona
         if (selectedPieceOnline.row === r && selectedPieceOnline.col === c) {
-          console.log('[GameView] Desselecionando peça');
           board.clearHighlights();
           selectedPieceOnline = null;
           return;
         }
         
-        // CASO B: Clicou num destino válido → ENVIA JOGADA COMPLETA
+        // CASO B: Move
         if (isValidTarget) {
           const fromR = selectedPieceOnline.row;
           const fromC = selectedPieceOnline.col;
           const toR = r;
           const toC = c;
           
-          console.log(`[GameView] Confirmando jogada: (${fromR},${fromC}) → (${toR},${toC})`);
-          
-          isProcessingMove = true; // ← Bloqueia
+          isProcessingMove = true; 
           root.classList.add('waiting-server');
           board.clearHighlights();
           
           try {
-            // Envia jogada completa; mensagens de erro serão confirmadas pelo servidor
             await engine.movePiece(fromR, fromC, toR, toC);
             selectedPieceOnline = null;
           } catch (err) {
-            // Evitar mostrar erro imediato para não conflitar com aceite posterior do servidor
             console.error('[GameView] Erro ao enviar jogada:', err);
             selectedPieceOnline = null;
           } finally {
-            isProcessingMove = false; // ← Desbloqueia SEMPRE
+            isProcessingMove = false; 
             root.classList.remove('waiting-server');
           }
-          
           return;
         }
         
-        // CASO C: Clicou noutra peça → Troca seleção
+        // CASO C: Troca peça
         const boardData = engine.getBoard();
         const newPiece = boardData[r]?.[c];
         
         if (newPiece && newPiece.player === 1) {
-          console.log('[GameView] Trocando seleção para nova peça');
           board.clearHighlights();
           selectedPieceOnline = null;
-          handleInteraction(r, c); // Recursão para selecionar nova peça
-          return; // 🔥 CRÍTICO: Para execução aqui!
+          handleInteraction(r, c); 
+          return; 
         } else {
-          // Clicou numa casa inválida (nem peça nem destino)
           toast('Clique num destino válido ou noutra peça', 'warning');
         }
       }
-      
     } else {
-      // LOCAL: Executa lógica original
       localInteractionMove(r, c);
     }
   }
@@ -330,13 +296,34 @@ export function renderGameView(container) {
   });
   boardPane.appendChild(board.el);
 
-  // Dado Unificado
   const dice = Dice(async () => {
     try {
       if (isOnline) {
+        // [CITE: src/views/GameView.js] CORREÇÃO: Detetar se estamos presos com jogada extra
+        const diceObj = (typeof engine.getDiceObj === 'function') ? engine.getDiceObj() : null;
+        const keepPlaying = diceObj?.keepPlaying;
+        const hasDice = !!diceObj;
+        
+        // Verifica movimentos
+        let hasMoves = true;
+        if (typeof engine.hasAnyValidMove === 'function') {
+          hasMoves = engine.hasAnyValidMove();
+        }
+
+        // Se temos dado extra (1, 4, 6) MAS não temos movimentos:
+        if (hasDice && keepPlaying && !hasMoves) {
+            console.log('[GameView] Preso com jogada extra. A forçar novo lançamento (rollDice) em vez de passar.');
+            // CORREÇÃO: Usamos rollDice() em vez de passTurn().
+            // O servidor sabe que não podemos mover e aceitará o novo lançamento.
+            await engine.rollDice();
+            return null;
+        }
+
+        // Caso normal: Rolar
         await engine.rollDice();
-        return null; // Online espera SSE
+        return null; 
       } else {
+        // ... lógica local ...
         const val = engine.rollDice();
         updateHUDLocal();
         localCheckAutoPass(1);
@@ -344,94 +331,90 @@ export function renderGameView(container) {
       }
     } catch (err) {
       toast(err.message, 'error');
+      // Em caso de erro, atualiza visualmente para garantir que não fica bloqueado
       return engine.getDice();
     }
   });
 
-  // Listener no holder do dado: evitar mensagens enquanto aguardamos pelo servidor
+  // Listener no holder do dado
   diceHolder.addEventListener('click', () => {
     if (root.classList.contains('waiting-server')) return;
     if (!diceBtn) return;
+    
     if (diceBtn.classList.contains('is-disabled')) {
       const isMyTurn = engine.getCurrentPlayer() === 1;
-      const diceObj = (typeof engine.getDiceObj === 'function') ? engine.getDiceObj() : null;
       const hasDice = engine.getDice() != null;
-      const extraTurn = isOnline && !!diceObj && diceObj.keepPlaying === true;
+      
+      let hasMoves = true;
+      if (typeof engine.hasAnyValidMove === 'function') {
+        hasMoves = engine.hasAnyValidMove(); // Online 
+      } else if (typeof engine.canPass === 'function') {
+        hasMoves = !engine.canPass(); // Local
+      }
+
       if (!isMyTurn) {
         toast(isOnline ? 'Não é a sua vez.' : 'Aguarde, é a vez do computador.', 'info');
-      } else if (hasDice && !extraTurn) {
-        // Só avisa para concluir jogada se não houver jogada extra (4 ou 6)
-        toast('Tem de concluir a jogada antes de rolar.', 'warning');
+      } 
+      else if (hasDice) {
+        // Se realmente não há movimentos, o auto-pass trata disso
+        if (hasMoves) {
+          toast('Tens jogadas disponíveis. Mova a peça antes de lançar de novo.', 'warning');
+        } else {
+          toast('A processar passagem de turno...', 'info');
+        }
       }
-      // Se houver extraTurn, não mostra aviso — o botão deve estar ativo para re-rolar
     }
   });
 
   diceHolder.appendChild(dice);
   diceBtn = dice.querySelector('button');
-  dice.dataset.lastValue = ''; // 🔥 INICIALIZA AQUI
+  dice.dataset.lastValue = ''; 
 
   // 5. UPDATE ONLINE (SSE)
   function onServerUpdate(data) {
     engine.update(data);
     
-    // Atualiza step do servidor
     if (data.step) {
-      serverStep = data.step;
+      // serverStep = data.step;
     }
     
     board.render();
-    
-    // Remove cursor de loading
     root.classList.remove('waiting-server');
     
-    // 🔥 Limpa seleção local quando servidor responde
     if (selectedPieceOnline) {
-      console.log('[SSE] Limpando seleção local após resposta do servidor');
       board.clearHighlights();
       selectedPieceOnline = null;
     }
 
-    // Atualiza Dado
     const diceObj = engine.getDiceObj();
     const newDiceValue = diceObj ? diceObj.value : null;
-    
-    // Detecta se o dado foi lançado (mudou de null para valor)
     const prevDiceValue = dice.dataset.lastValue ? parseInt(dice.dataset.lastValue) : null;
     const diceWasRolled = (prevDiceValue === null && newDiceValue !== null);
     
     setDiceValue(dice, newDiceValue);
     
-    // Se o dado foi lançado, faz animações
     if (diceWasRolled && state.config.animations !== false) {
       const sticks = dice.querySelector('.dice-sticks');
       sticks.classList.add('dice-bounce');
       setTimeout(() => sticks.classList.remove('dice-bounce'), 600);
-      
-      // Partículas para valores especiais
       if (newDiceValue === 6 || newDiceValue === 4 || newDiceValue === 1) {
         createGoldenParticlesExported(dice);
       }
     }
     
-    // Guarda o valor atual para próxima comparação
     dice.dataset.lastValue = newDiceValue ?? '';
 
-    // Atualiza HUD Online
     updateHUDOnline(data);
-    
-    // Atualiza contadores de peças capturadas
     updateCaptureCounters();
 
-    // Fim de Jogo
     if (data.winner) {
       const isMe = (data.winner === state.session.nick);
       triggerEndGame(isMe ? 1 : 2, data.winner);
     }
   }
 
- function updateHUDOnline(data) {
-    // 1. Atualiza Texto e Indicadores de Turno
+  function updateHUDOnline(data) {
+    // ... (código anterior de turnos e nomes mantém-se igual) ...
     const isMyTurn = (data.turn === state.session.nick);
     root.querySelector('#hud-turn').textContent = isMyTurn ? 'Sua Vez' : `Vez de ${data.turn}`;
     
@@ -444,12 +427,21 @@ export function renderGameView(container) {
     
     root.querySelector('#player-human').classList.toggle('active-player', isMyTurn);
     root.querySelector('#player-opponent').classList.toggle('active-player', !isMyTurn);
-    
-    // 2. Lógica Base do Botão de Dado
-    // Ativa se for minha vez E (não há dado OU tenho jogada extra e estou na seleção de origem)
-    // Permite re-lançar sempre que há jogada extra (1,4,6),
-    // independentemente do `data.step` atual.
-    const canRoll = isMyTurn && (!data.dice || (data.dice.keepPlaying === true));
+
+    // Lógica de verificação de movimentos
+    let hasMoves = true;
+    if (typeof engine.hasAnyValidMove === 'function') {
+      hasMoves = !!engine.hasAnyValidMove();
+    }
+
+    const diceValue = data.dice?.value;
+    const keepPlaying = data.dice?.keepPlaying; // (1, 4, 6)
+
+    // Lógica do Botão de Dado
+    // Permite clicar se:
+    // A) É minha vez e não tenho dado (Rolar normal)
+    // B) É minha vez, tenho dado extra, mas NÃO tenho movimentos (Clicar para rolar de novo e saltar o movimento impossível)
+    const canRoll = (isMyTurn && !data.dice) || (isMyTurn && data.dice && keepPlaying && !hasMoves);
     
     if (diceBtn) {
       const disabled = !canRoll;
@@ -460,80 +452,37 @@ export function renderGameView(container) {
       else diceBtn.classList.remove('dice-ready');
     }
 
-    // 3. Lógica do Botão Passar e Auto-Pass
-    // Determinar jogadas disponíveis apenas via API dedicada quando existir
-    let hasMoves = true;
-    if (typeof engine.hasAnyValidMove === 'function') {
-      hasMoves = !!engine.hasAnyValidMove();
-    }
-    const diceValue = data.dice?.value;
-    const keepPlaying = data.dice?.keepPlaying; // (1, 4, 6)
-    
-    btnPass.style.display = 'block';
-    
-    let canPass = false;
+    // Auto-Pass (APENAS para perda de vez, ex: dado 2 ou 3 sem movimentos)
     let shouldAutoPass = false;
     let autoPassReason = '';
-    
+
     if (data.mustPass && data.mustPass === state.session.nick) {
-        // CASO A: Servidor manda passar
-        canPass = true;
         shouldAutoPass = true;
-        autoPassReason = 'Sem jogadas disponíveis. Passando a vez...';
-
-    } else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from' && !hasMoves) {
-      // Sem jogada extra e sem movimentos confirmados
-      canPass = true;
-      shouldAutoPass = false;
-
-    } else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from') {
-        // CASO C: Bloqueado a meio do jogo sem extra turn (dado 2 ou 3)
-        // Aqui o jogador tem de passar manualmente
-        canPass = true;
-        shouldAutoPass = false;
-
-    } else if (!isMyTurn) {
-        canPass = false;
-    } else if (!data.dice) {
-        canPass = false;
-    } else {
-        // Tenho dado e posso jogar
-        canPass = false;
+        autoPassReason = 'Sem jogadas disponíveis. A passar a vez...';
+    } 
+    else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from' && !hasMoves) {
+        // Dado normal (2 ou 3) e sem movimentos -> Perde a vez
+        shouldAutoPass = true;
+        autoPassReason = `Sem jogadas para o ${diceValue}. A passar a vez...`;
     }
-    
-    // Aplica estado ao botão Passar
-    if (canPass) {
-        btnPass.classList.remove('is-disabled');
-        btnPass.style.pointerEvents = 'auto';
-        btnPass.style.opacity = '1';
-        btnPass.onclick = () => engine.passTurn();
-        
-        if (shouldAutoPass) {
-            toast(autoPassReason, 'info');
-            // Se vai passar automático, bloqueia o dado para não haver cliques duplos
-            if (diceBtn) diceBtn.classList.add('is-disabled');
-            setTimeout(() => {
-                engine.passTurn();
-            }, 1500);
-        }
-    } else {
-        btnPass.classList.add('is-disabled');
-        btnPass.style.pointerEvents = 'none';
-        btnPass.style.opacity = '0.5';
-        btnPass.onclick = null;
+
+    if (shouldAutoPass) {
+        toast(autoPassReason, 'info');
+        if (diceBtn) diceBtn.classList.add('is-disabled'); 
+        setTimeout(() => {
+            engine.passTurn();
+        }, 1500);
     }
     
     updateSoundIcon();
   }
+
   function updateCaptureCounters() {
     if (!isOnline) return;
-    
-    // Conta peças no tabuleiro para cada jogador
     const board = engine.getBoard();
     const cols = engine.getColumns ? engine.getColumns() : 9;
     let player1Pieces = 0;
     let player2Pieces = 0;
-    
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = board[r][c];
@@ -543,17 +492,13 @@ export function renderGameView(container) {
         }
       }
     }
-    
-    // Calcula capturas (inicialmente tinha 9, agora tem X)
     const player1Captured = 9 - player1Pieces;
     const player2Captured = 9 - player2Pieces;
-    
-    // Atualiza UI (eu sou sempre player-human, adversário é player-opponent)
     root.querySelector('#counter-human').textContent = player2Captured;
     root.querySelector('#counter-ai').textContent = player1Captured;
   }
 
-  // 6. UPDATE LOCAL (Lógica Original)
+  // 6. UPDATE LOCAL
   function localInteractionMove(r, c) {
     if (engine.getCurrentPlayer() !== 1) return;
     const moves = engine.getValidMoves(r, c);
@@ -638,16 +583,12 @@ export function renderGameView(container) {
     const player = engine.getCurrentPlayer();
     const turn = player === 1 ? username : 'Computador'; 
     root.querySelector('#hud-turn').textContent = `Vez de ${turn}`;
-    
     root.querySelector('#player-human').classList.toggle('active-player', player === 1);
     root.querySelector('#player-opponent').classList.toggle('active-player', player === 2);
-    
     const counts = engine.getPieceCounts();
     root.querySelector('#counter-human').textContent = counts.player1;
     root.querySelector('#counter-ai').textContent = counts.player2;
-    
     setDiceValue(dice, engine.getDice());
-    
     if (diceBtn) {
       const isDisabled = (player !== 1 || engine.getDice() != null);
       diceBtn.classList.toggle('is-disabled', isDisabled);
@@ -659,7 +600,6 @@ export function renderGameView(container) {
     updateSoundIcon();
   }
 
-  // Helper para atualizar ícone do som
   function updateSoundIcon() {
     const btnSound = root.querySelector('#btn-toggle-sound');
     if (btnSound) {
@@ -668,8 +608,7 @@ export function renderGameView(container) {
     }
   }
 
-  // 7. LISTENERS DE BOTÕES E POPOVERS (Restaurados)
-
+  // 7. LISTENERS 
   const btnSound = root.querySelector('#btn-toggle-sound');
   let popoverOpen = false;
 
@@ -698,7 +637,6 @@ export function renderGameView(container) {
     }
   };
 
-  // Botão Sair (Híbrido)
   root.querySelector('#btn-exit').onclick = () => {
     showModal({
       title: isOnline ? 'Desistir do Jogo' : 'Sair do Jogo', 
@@ -712,10 +650,10 @@ export function renderGameView(container) {
                await engine.giveUp();
                if (unsubscribeSSE) unsubscribeSSE();
             } else {
-               triggerEndGame(2, 'Computador'); // Local: Desistir = Perder
+               triggerEndGame(2, 'Computador'); 
             }
             state.session.gameId = null;
-            navigateTo('menu'); // Navega depois de fechar
+            navigateTo('menu'); 
           }
         },
         { text: 'Cancelar', className: 'btn btn-secondary' }
@@ -733,14 +671,12 @@ export function renderGameView(container) {
         const hint = getBestMoveWithHint(engine);
         if (!hint || !hint.move) { toast('Sem jogadas.', 'info'); return; }
         const { move, reason } = hint;
-        // Destaque visual
         engine.getValidMoves(move.piece.row, move.piece.col);
         board.highlightSelection(move.piece.row, move.piece.col, [move.target]);
         toast(`Dica: ${reason}`, 'success');
     };
   }
   
-  // Popover de Atalhos (Código Original)
   root.querySelector('#btn-shortcuts').onclick = (e) => {
     e.stopPropagation();
     const existing = document.querySelector('.shortcuts-popover');
@@ -794,33 +730,87 @@ export function renderGameView(container) {
   };
   document.addEventListener('keydown', handleKeyPress);
 
-  // 8. FIM DE JOGO
+  // 8. FIM DE JOGO E TRANSIÇÕES
   function triggerEndGame(winnerCode, winnerName) {
     const isWin = (winnerCode === 1);
+    
+    // Toca o som
     playSound(isWin ? 'victory' : 'defeat');
     
-    // Stats para Local (no online o servidor gere)
-    const stats = {
-      won: isWin,
-      captures: humanCaptures,
-      moves: humanMoves
-    };
+    // Estatísticas
+    const stats = { won: isWin, captures: humanCaptures, moves: humanMoves };
     
-    if (unsubscribeSSE) unsubscribeSSE();
-    state.session.gameId = null;
-
+    // Se for local, guarda logo o resultado
     if (!isOnline) saveGameResult(stats);
 
+    // Pequeno delay para o jogador processar o último movimento antes do modal abrir
     setTimeout(() => {
       showVictoryModal({ 
         winner: isOnline ? winnerName : winnerCode, 
         stats: isOnline ? {} : stats,
-        onPlayAgain: () => {
-             // Se for local, recomeça. Se for online, vai para o menu (nova busca)
-             if (isOnline) navigateTo('menu');
-             else navigateTo('game');
+        
+        // --- JOGAR NOVAMENTE ---
+        onPlayAgain: async () => {
+             // 1. Fecha o modal primeiro para não ficar "pendurado"
+             closeModal();
+
+             if (isOnline) {
+               // MODO ONLINE: Procura novo jogo sem sair do ecrã
+               
+               // a. Desliga a conexão do jogo anterior
+               if (unsubscribeSSE) {
+                 unsubscribeSSE();
+                 unsubscribeSSE = null;
+               }
+
+               // b. Feedback visual imediato (reutiliza o estilo waiting-server)
+               root.classList.add('waiting-server'); 
+               toast('A procurar novo adversário...', 'info');
+
+               try {
+                 // [CORREÇÃO] Nome da função: network.join (não joinGame)
+                 // [CORREÇÃO] Ordem dos argumentos: group, nick, password, size
+                 const newGameData = await network.join(
+                    state.session.group || 34, 
+                    state.session.nick, 
+                    state.session.password, 
+                    state.config.columns || 9
+                 );
+
+                 // [CORREÇÃO] O servidor retorna { game: "hash" }, não gameId
+                 if (newGameData.game) {
+                   state.session.gameId = newGameData.game;
+                   
+                   // Força o "reset" do componente
+                   navigateTo('game'); 
+                 } else {
+                   throw new Error('ID de jogo inválido');
+                 }
+               } catch (err) {
+                 console.error(err);
+                 toast('Erro ao encontrar jogo: ' + err.message, 'error');
+                 setTimeout(() => navigateTo('menu'), 2000);
+               }
+
+             } else {
+               // MODO LOCAL: Apenas recarrega a vista
+               navigateTo('game');
+             }
         },
-        onGoToMenu: () => navigateTo('menu')
+
+        // --- SAIR PARA O MENU ---
+        onGoToMenu: () => {
+            closeModal(); // Fecha visualmente
+            
+            // Limpa conexão antes de sair
+            if (unsubscribeSSE) {
+                unsubscribeSSE();
+                unsubscribeSSE = null;
+            }
+            
+            state.session.gameId = null;
+            navigateTo('menu');
+        }
       });
     }, 800);
   }
@@ -841,21 +831,13 @@ export function renderGameView(container) {
   window.cleanupGameView = () => {
     document.removeEventListener('keydown', handleKeyPress);
     document.removeEventListener('click', handleClickOutside, true);
-    
-    // 🔥 Fecha SSE
     if (unsubscribeSSE) unsubscribeSSE();
-    
-    // 🔥 Remove popovers
     if (audioPopover) audioPopover.remove();
     document.querySelectorAll('.shortcuts-popover').forEach(p => p.remove());
-    
-    // 🔥 Limpa toasts
     document.querySelectorAll('.toast').forEach(t => {
       if (t.dataset.timeoutId) clearTimeout(parseInt(t.dataset.timeoutId));
       t.remove();
     });
-    
-    // 🔥 Remove cursor de loading
     root.classList.remove('waiting-server');
   };
 }

@@ -158,12 +158,28 @@ export function showVictoryModal({ winner, stats = {}, onPlayAgain, onGoToMenu }
       </div>
     `,
     buttons: [
-      { text: 'Jogar Novamente', className: 'btn btn-primary', onClick: () => { if (onPlayAgain) onPlayAgain(); }},
-      { text: 'Menu', className: 'btn btn-secondary', onClick: () => { if (onGoToMenu) onGoToMenu(); }}
+      { 
+        text: 'Jogar Novamente', 
+        className: 'btn btn-primary', 
+        onClick: (e) => { 
+            if(e && e.preventDefault) e.preventDefault(); // [CORREÇÃO] Evita refresh
+            if (onPlayAgain) onPlayAgain(); 
+        }
+      },
+      { 
+        text: 'Menu', 
+        className: 'btn btn-secondary', 
+        onClick: (e) => { 
+            if(e && e.preventDefault) e.preventDefault(); // [CORREÇÃO] Evita refresh
+            if (onGoToMenu) onGoToMenu(); 
+        }
+      }
     ],
     onClose: () => {
       document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
-      if (onGoToMenu) onGoToMenu();
+      // [CORREÇÃO] Removemos 'if (onGoToMenu) onGoToMenu();' daqui.
+      // Se estivesse aqui, ao fechar o modal (que acontece automaticamente ao clicar nos botões),
+      // forçaria sempre a ida para o menu, estragando o "Jogar Novamente".
     }
   });
   
@@ -212,7 +228,7 @@ function createConfetti(count = 150) {
 
 /* Modal Inteligente: Mostra Local por defeito, com opção para Online */
 export function showLeaderboardModal() {
-  // 1. Gera o HTML Local (Código Original Restaurado)
+  // 1. Gera o HTML Local (Mantém-se igual)
   const stats = getPlayerStats();
   const localHTML = `
     <div id="tab-local" class="leaderboard-tab-content">
@@ -255,21 +271,26 @@ export function showLeaderboardModal() {
     </div>
   `;
 
-  // 2. Prepara container para Online
+  // 2. Prepara container para Online (MODIFICADO: Apenas texto, sem inputs)
+  const currentGroup = state.session.group || 34;
+  const currentSize = state.config.columns || 9;
+
   const onlineHTML = `
     <div id="tab-online" class="leaderboard-tab-content" style="display:none;">
-       <div id="online-controls" style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
-          <label style="opacity:0.8;">Grupo:
-            <input id="online-group" type="number" min="1" max="999" value="${state.session.group || 34}" style="width:70px; margin-left:6px;">
-          </label>
-          <label style="opacity:0.8;">Colunas:
-            <select id="online-size" style="margin-left:6px;">
-              ${[7,9,11].map(v => `<option value="${v}" ${((state.config.columns||9)===v)?'selected':''}>${v}</option>`).join('')}
-            </select>
-          </label>
-          <button id="online-refresh" class="btn btn-secondary" style="padding:6px 10px;">Atualizar</button>
+       <div id="online-controls" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:rgba(203,178,121,0.1); padding:12px; border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
+          <div style="font-size:0.95rem; color:var(--sand);">
+            <span style="opacity:0.7; margin-right:5px;">A visualizar:</span>
+            <strong>Grupo ${currentGroup}</strong> • <strong>${currentSize} Colunas</strong>
+          </div>
+          <button id="online-refresh" class="btn btn-secondary btn-small" style="margin:0; padding:6px 12px;">
+            Atualizar
+          </button>
        </div>
-       <div id="online-meta" style="opacity:0.8;margin-bottom:12px;font-size:0.9rem;display:none;"></div>
+       
+       <div style="text-align:center; font-size:0.8rem; opacity:0.6; margin-bottom:15px; font-style:italic;">
+         (Para ver outros grupos, altere as configurações no Menu Principal)
+       </div>
+
        <div class="loader" style="text-align:center; padding:20px;">
          <p>A carregar Ranking do Servidor...</p>
        </div>
@@ -280,9 +301,9 @@ export function showLeaderboardModal() {
     title: 'Estatísticas',
     className: 'modal-leaderboard',
     content: `
-      <div class="tabs-header" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid #444;">
+      <div class="tabs-header" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid rgba(203,178,121,0.2); padding-bottom:5px;">
         <button id="btn-tab-local" class="btn-tab active" style="background:none; border:none; color:var(--sand); padding:10px; cursor:pointer; font-weight:bold; border-bottom:2px solid var(--sand);">Local</button>
-        <button id="btn-tab-online" class="btn-tab" style="background:none; border:none; color:#666; padding:10px; cursor:pointer;">Online</button>
+        <button id="btn-tab-online" class="btn-tab" style="background:none; border:none; color:var(--cream); opacity:0.6; padding:10px; cursor:pointer;">Online</button>
       </div>
       ${localHTML}
       ${onlineHTML}
@@ -298,42 +319,36 @@ export function showLeaderboardModal() {
   const divLocal = document.getElementById('tab-local');
   const divOnline = document.getElementById('tab-online');
 
-  btnLocal.onclick = () => {
-    divLocal.style.display = 'block';
-    divOnline.style.display = 'none';
-    btnLocal.style.color = 'var(--sand)';
-    btnLocal.style.borderBottom = '2px solid var(--sand)';
-    btnOnline.style.color = '#666';
-    btnOnline.style.borderBottom = 'none';
+  // Estilo visual da aba ativa vs inativa
+  const activateTab = (activeBtn, inactiveBtn, activeDiv, inactiveDiv) => {
+    activeDiv.style.display = 'block';
+    inactiveDiv.style.display = 'none';
+    
+    activeBtn.style.opacity = '1';
+    activeBtn.style.borderBottom = '2px solid var(--sand)';
+    
+    inactiveBtn.style.opacity = '0.6';
+    inactiveBtn.style.borderBottom = '2px solid transparent';
   };
 
+  btnLocal.onclick = () => activateTab(btnLocal, btnOnline, divLocal, divOnline);
+
   btnOnline.onclick = async () => {
-    divLocal.style.display = 'none';
-    divOnline.style.display = 'block';
-    btnOnline.style.color = 'var(--sand)';
-    btnOnline.style.borderBottom = '2px solid var(--sand)';
-    btnLocal.style.color = '#666';
-    btnLocal.style.borderBottom = 'none';
+    activateTab(btnOnline, btnLocal, divOnline, divLocal);
     
     // Fetch Online se ainda não carregou
     if (!divOnline.dataset.loaded) {
        await fetchOnlineRanking(divOnline);
        divOnline.dataset.loaded = "true";
     }
-    // Liga controlos para re-fetch
-    const groupInput = document.getElementById('online-group');
-    const sizeSelect = document.getElementById('online-size');
+    
+    // Lógica do botão Atualizar (Simplificada: Apenas recarrega)
     const btnRefresh = document.getElementById('online-refresh');
+    
     const requery = async () => {
-      // Atualiza estado global para consistência
-      const g = parseInt(groupInput.value) || (state.session.group||34);
-      const s = parseInt(sizeSelect.value) || (state.config.columns||9);
-      state.session.group = g;
-      state.config.columns = s;
       // Limpa conteúdo e volta a carregar
-      const meta = divOnline.querySelector('#online-meta');
-      meta.style.display = 'none';
       divOnline.querySelector('.leaderboard-content')?.remove();
+      
       let loader = divOnline.querySelector('.loader');
       if (!loader) {
         loader = document.createElement('div');
@@ -342,14 +357,16 @@ export function showLeaderboardModal() {
         loader.style.padding = '20px';
         loader.innerHTML = '<p>A carregar Ranking do Servidor...</p>';
         divOnline.appendChild(loader);
+      } else {
+        loader.style.display = 'block';
       }
+      
       await fetchOnlineRanking(divOnline);
     };
+
     if (btnRefresh && !btnRefresh.dataset.bound) {
       btnRefresh.dataset.bound = 'true';
       btnRefresh.onclick = requery;
-      groupInput.onchange = requery;
-      sizeSelect.onchange = requery;
     }
   };
 }
