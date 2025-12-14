@@ -195,13 +195,30 @@ export function createOnlineEngine() {
     getHighlights() {
       if (!serverState || !serverState.selected) return [];
       
-      // Highlights vêm do servidor como índices lógicos
+      // 🔥 CORREÇÃO: Converte índices do servidor para coordenadas visuais
       return serverState.selected.map(idx => {
-        let { row, col } = this.indexToCoords(idx);
-        
-        // Transforma para visual
+        const { row, col } = this.indexToCoords(idx);
         return this.transformCoords(row, col);
       });
+    },
+
+    // 🔥 NOVO: Método único que o GameView chama ao clicar
+    async interaction(r, c) {
+      // Converte coordenadas visuais para lógicas
+      const logicalPos = this.transformCoords(r, c);
+      const idx = this.coordsToIndex(logicalPos.row, logicalPos.col);
+      
+      console.log(`[Online] Interaction: (${r},${c}) visual → (${logicalPos.row},${logicalPos.col}) lógico → idx=${idx}`);
+      console.log(`[Online] Estado atual: step=${serverState?.step}`);
+      
+      // Envia para o servidor
+      waitingForServer = true;
+      try {
+        await network.notify(myNick, myPassword, gameId, idx);
+      } catch (err) {
+        waitingForServer = false;
+        throw err;
+      }
     },
 
     getCurrentPlayer() {

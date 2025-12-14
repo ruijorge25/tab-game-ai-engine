@@ -28,6 +28,9 @@ export function renderGameView(container) {
   let isOnline = false;
   let unsubscribeSSE = null;
 
+  // 🔥 Inicializa flag
+  window.autoPassInProgress = false;
+
   // 1. DECISÃO DE MOTOR
   if (state.session.gameId) {
     isOnline = true;
@@ -200,7 +203,6 @@ export function renderGameView(container) {
   sliderVolume.onclick = (e) => e.stopPropagation();
 
   // 4. LÓGICA DE JOGO
-  let selectedPieceOnline = null; 
   let isProcessingMove = false;
 
   async function handleInteraction(r, c) {
@@ -210,78 +212,25 @@ export function renderGameView(container) {
     }
     
     if (isOnline) {
-      // ETAPA 1: Nenhuma peça selecionada ainda
-      if (!selectedPieceOnline) {
-        const boardData = engine.getBoard();
-        const piece = boardData[r]?.[c];
-        
-        if (!piece || piece.player !== 1) {
-          toast('Selecione uma das suas peças', 'warning');
-          return;
-        }
-        
-        const validMoves = engine.getValidMoves ? engine.getValidMoves(r, c) : [];
-        console.log('[GameView] Selecionando peça LOCAL:', r, c, 'Movimentos:', validMoves);
-        
-        if (validMoves.length === 0) {
-          toast('Esta peça não pode mover com este dado', 'warning');
-          return;
-        }
-        
-        selectedPieceOnline = { row: r, col: c };
-        board.highlightSelection(r, c, validMoves);
-        return; 
+      // 🔥 SIMPLIFICADO: Apenas chama interaction e aguarda SSE
+      const currentTurn = engine.getCurrentPlayer();
+      if (currentTurn !== 1) {
+        console.log('[GameView] Não é a minha vez');
+        return;
       }
-      // ETAPA 2: Já tem peça selecionada
-      else {
-        const currentHighlights = board.el.querySelectorAll('.is-target');
-        const isValidTarget = [...currentHighlights].some(cell => {
-          return parseInt(cell.dataset.r) === r && parseInt(cell.dataset.c) === c;
-        });
-        
-        // CASO A: Desseleciona
-        if (selectedPieceOnline.row === r && selectedPieceOnline.col === c) {
-          board.clearHighlights();
-          selectedPieceOnline = null;
-          return;
-        }
-        
-        // CASO B: Move
-        if (isValidTarget) {
-          const fromR = selectedPieceOnline.row;
-          const fromC = selectedPieceOnline.col;
-          const toR = r;
-          const toC = c;
-          
-          isProcessingMove = true; 
-          root.classList.add('waiting-server');
-          board.clearHighlights();
-          
-          try {
-            await engine.movePiece(fromR, fromC, toR, toC);
-            selectedPieceOnline = null;
-          } catch (err) {
-            console.error('[GameView] Erro ao enviar jogada:', err);
-            selectedPieceOnline = null;
-          } finally {
-            isProcessingMove = false; 
-            root.classList.remove('waiting-server');
-          }
-          return;
-        }
-        
-        // CASO C: Troca peça
-        const boardData = engine.getBoard();
-        const newPiece = boardData[r]?.[c];
-        
-        if (newPiece && newPiece.player === 1) {
-          board.clearHighlights();
-          selectedPieceOnline = null;
-          handleInteraction(r, c); 
-          return; 
-        } else {
-          toast('Clique num destino válido ou noutra peça', 'warning');
-        }
+      
+      isProcessingMove = true;
+      root.classList.add('waiting-server');
+      
+      try {
+        await engine.interaction(r, c);
+        // SSE vai atualizar o tabuleiro automaticamente
+      } catch (err) {
+        console.error('[GameView] Erro:', err);
+        toast(err.message, 'error');
+      } finally {
+        isProcessingMove = false;
+        root.classList.remove('waiting-server');
       }
     } else {
       localInteractionMove(r, c);
@@ -373,18 +322,10 @@ export function renderGameView(container) {
   function onServerUpdate(data) {
     engine.update(data);
     
-    if (data.step) {
-      // serverStep = data.step;
-    }
-    
     board.render();
     root.classList.remove('waiting-server');
+    isProcessingMove = false; // 🔥 Liberta o bloqueio
     
-    if (selectedPieceOnline) {
-      board.clearHighlights();
-      selectedPieceOnline = null;
-    }
-
     const diceObj = engine.getDiceObj();
     const newDiceValue = diceObj ? diceObj.value : null;
     const prevDiceValue = dice.dataset.lastValue ? parseInt(dice.dataset.lastValue) : null;
@@ -403,10 +344,24 @@ export function renderGameView(container) {
     
     dice.dataset.lastValue = newDiceValue ?? '';
 
+    // 🔥 HIGHLIGHTS baseados no step do servidor
+    if (data.step === 'to' && data.selected && data.selected.length > 0) {
+      // Servidor enviou destinos possíveis
+      const highlights = engine.getHighlights();
+      if (highlights.length > 0) {
+        const firstPiece = highlights[0]; // A peça selecionada é o primeiro elemento
+        const validMoves = highlights.slice(1); // Os destinos são o resto
+        board.highlightSelection(firstPiece.row, firstPiece.col, validMoves);
+      }
+    } else {
+      // Limpa highlights
+      board.clearHighlights();
+    }
+
     updateHUDOnline(data);
     updateCaptureCounters();
 
-    // 🔥 CORREÇÃO 1: Verifica vitória via data.winner
+    // Verificação de vitória
     if (data.winner) {
       const isMe = (data.winner === state.session.nick);
       
@@ -446,7 +401,6 @@ export function renderGameView(container) {
   }
 
   function updateHUDOnline(data) {
-    // ... (código anterior de turnos e nomes mantém-se igual) ...
     const isMyTurn = (data.turn === state.session.nick);
     root.querySelector('#hud-turn').textContent = isMyTurn ? 'Sua Vez' : `Vez de ${data.turn}`;
     
@@ -460,20 +414,20 @@ export function renderGameView(container) {
     root.querySelector('#player-human').classList.toggle('active-player', isMyTurn);
     root.querySelector('#player-opponent').classList.toggle('active-player', !isMyTurn);
 
-    // Lógica de verificação de movimentos
+    const diceValue = data.dice?.value;
+    const keepPlaying = data.dice?.keepPlaying;
+
+    // 🔥 CORREÇÃO: Verifica se há movimentos apenas quando necessário
     let hasMoves = true;
-    if (typeof engine.hasAnyValidMove === 'function') {
+    if (isMyTurn && data.dice && typeof engine.hasAnyValidMove === 'function') {
       hasMoves = !!engine.hasAnyValidMove();
     }
 
-    const diceValue = data.dice?.value;
-    const keepPlaying = data.dice?.keepPlaying; // (1, 4, 6)
-
-    // Lógica do Botão de Dado
-    // Permite clicar se:
-    // A) É minha vez e não tenho dado (Rolar normal)
-    // B) É minha vez, tenho dado extra, mas NÃO tenho movimentos (Clicar para rolar de novo e saltar o movimento impossível)
-    const canRoll = (isMyTurn && !data.dice) || (isMyTurn && data.dice && keepPlaying && !hasMoves);
+    // Botão de Dado
+    // Permite rolar se:
+    // A) É minha vez e não tenho dado (rolar normal)
+    // B) É minha vez, tenho dado extra (keepPlaying), mas NÃO tenho movimentos
+    const canRoll = (isMyTurn && !data.dice) || (isMyTurn && keepPlaying && !hasMoves);
     
     if (diceBtn) {
       const disabled = !canRoll;
@@ -484,30 +438,19 @@ export function renderGameView(container) {
       else diceBtn.classList.remove('dice-ready');
     }
 
-    // Auto-Pass (APENAS para perda de vez, ex: dado 2 ou 3 sem movimentos)
-    let shouldAutoPass = false;
-    let autoPassReason = '';
-
-    if (data.mustPass && data.mustPass === state.session.nick) {
-        shouldAutoPass = true;
-        autoPassReason = 'Sem jogadas disponíveis. A passar a vez...';
-    } 
-    else if (isMyTurn && data.dice && !keepPlaying && data.step === 'from' && !hasMoves) {
-        // Dado normal (2 ou 3) e sem movimentos -> Perde a vez
-        shouldAutoPass = true;
-        autoPassReason = `Sem jogadas para o ${diceValue}. A passar a vez...`;
-    }
-
-    if (shouldAutoPass) {
-        toast(autoPassReason, 'info');
-        if (diceBtn) diceBtn.classList.add('is-disabled'); 
-        
-        // 🔥 CORREÇÃO: Aumentar delay para dar tempo ao servidor processar
-        setTimeout(() => {
-          engine.passTurn().catch(err => {
-            console.error('[GameView] Erro ao passar vez:', err);
+    // 🔥 Auto-Pass: Apenas se servidor mandar mustPass
+    if (data.mustPass && data.mustPass === state.session.nick && !window.autoPassInProgress) {
+      window.autoPassInProgress = true;
+      toast('Sem jogadas disponíveis. A passar a vez...', 'info');
+      if (diceBtn) diceBtn.classList.add('is-disabled');
+      
+      setTimeout(() => {
+        engine.passTurn()
+          .catch(err => console.error('[GameView] Erro ao passar vez:', err))
+          .finally(() => {
+            window.autoPassInProgress = false;
           });
-        }, 2000); // Aumentado de 1500 para 2000ms
+      }, 1500);
     }
     
     updateSoundIcon();
