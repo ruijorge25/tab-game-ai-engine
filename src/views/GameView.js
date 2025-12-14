@@ -247,6 +247,14 @@ export function renderGameView(container) {
   const dice = Dice(async () => {
     try {
       if (isOnline) {
+        // 🔥 CORREÇÃO: Verifica se há 2 jogadores antes de permitir rolar
+        const serverState = engine.getState?.();
+        const players = serverState?.players;
+        if (!players || Object.keys(players).length < 2) {
+          toast('À espera de adversário...', 'info');
+          return;
+        }
+        
         // [CITE: src/views/GameView.js] CORREÇÃO: Detetar se estamos presos com jogada extra
         const diceObj = (typeof engine.getDiceObj === 'function') ? engine.getDiceObj() : null;
         const keepPlaying = diceObj?.keepPlaying;
@@ -344,8 +352,9 @@ export function renderGameView(container) {
     
     dice.dataset.lastValue = newDiceValue ?? '';
 
-    // 🔥 HIGHLIGHTS baseados no step do servidor
-    if (data.step === 'to' && data.selected && data.selected.length > 0) {
+    // 🔥 HIGHLIGHTS baseados no step do servidor (só se for minha vez)
+    const isMyTurn = (data.turn === state.session.nick);
+    if (isMyTurn && data.step === 'to' && data.selected && data.selected.length > 0) {
       // Servidor enviou destinos possíveis
       const highlights = engine.getHighlights();
       if (highlights.length > 0) {
