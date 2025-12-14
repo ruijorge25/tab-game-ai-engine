@@ -407,9 +407,31 @@ export function renderGameView(container) {
     updateHUDOnline(data);
     updateCaptureCounters();
 
+    // 🔥 CORREÇÃO 1: Verifica vitória via data.winner
     if (data.winner) {
       const isMe = (data.winner === state.session.nick);
       triggerEndGame(isMe ? 1 : 2, data.winner);
+      return;
+    }
+
+    // 🔥 CORREÇÃO 2: Verifica vitória por contagem de peças
+    // (Backup caso o servidor não envie data.winner)
+    const pieceCounts = engine.getPieceCounts ? engine.getPieceCounts() : null;
+    if (pieceCounts) {
+      console.log('[GameView] Contagem de peças:', pieceCounts);
+      
+      if (pieceCounts.player1 === 0) {
+        // Eu perdi (todas as minhas peças foram comidas)
+        const opponentNick = Object.keys(data.players || {}).find(nick => nick !== state.session.nick) || 'Adversário';
+        triggerEndGame(2, opponentNick);
+        return;
+      }
+      
+      if (pieceCounts.player2 === 0) {
+        // Eu ganhei (todas as peças do adversário foram comidas)
+        triggerEndGame(1, state.session.nick);
+        return;
+      }
     }
   }
 
@@ -469,9 +491,13 @@ export function renderGameView(container) {
     if (shouldAutoPass) {
         toast(autoPassReason, 'info');
         if (diceBtn) diceBtn.classList.add('is-disabled'); 
+        
+        // 🔥 CORREÇÃO: Aumentar delay para dar tempo ao servidor processar
         setTimeout(() => {
-            engine.passTurn();
-        }, 1500);
+          engine.passTurn().catch(err => {
+            console.error('[GameView] Erro ao passar vez:', err);
+          });
+        }, 2000); // Aumentado de 1500 para 2000ms
     }
     
     updateSoundIcon();
@@ -483,6 +509,7 @@ export function renderGameView(container) {
     const cols = engine.getColumns ? engine.getColumns() : 9;
     let player1Pieces = 0;
     let player2Pieces = 0;
+    
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = board[r][c];
@@ -492,10 +519,19 @@ export function renderGameView(container) {
         }
       }
     }
-    const player1Captured = 9 - player1Pieces;
-    const player2Captured = 9 - player2Pieces;
-    root.querySelector('#counter-human').textContent = player2Captured;
-    root.querySelector('#counter-ai').textContent = player1Captured;
+    
+    const player1Captured = 9 - player1Pieces; // Peças MINHAS capturadas
+    const player2Captured = 9 - player2Pieces; // Peças do ADVERSÁRIO capturadas
+    
+    console.log('[GameView] Peças no tabuleiro:', { 
+      minhas: player1Pieces, 
+      adversario: player2Pieces,
+      capturadas_minhas: player1Captured,
+      capturadas_adversario: player2Captured
+    });
+    
+    root.querySelector('#counter-human').textContent = player2Captured; // Peças que EU capturei
+    root.querySelector('#counter-ai').textContent = player1Captured; // Peças que foram capturadas de mim
   }
 
   // 6. UPDATE LOCAL
