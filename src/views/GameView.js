@@ -78,14 +78,13 @@ export function renderGameView(container) {
           </svg>
         </button>
         
-        ${!isOnline ? `
         <button class="btn-icon" id="btn-hints" title="Dicas">
           <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18h6"></path>
             <path d="M10 22h4"></path>
             <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1.33.47 2.48 1.5 3.5.76.76 1.23 1.52 1.41 2.5"></path>
           </svg>
-        </button>` : ''}
+        </button>
 
         <button class="btn-icon" id="btn-shortcuts" title="Atalhos de Teclado">
           <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -710,19 +709,66 @@ export function renderGameView(container) {
 
   root.querySelector('#btn-rules').onclick = () => showRulesModal();
 
-  if (!isOnline) {
-    root.querySelector('#btn-hints').onclick = () => {
-        if (engine.getCurrentPlayer() !== 1) { toast('Não é a sua vez.', 'warning'); return; }
-        if (engine.getDice() == null) { toast('Lance o dado primeiro.', 'warning'); return; }
-        board.clearHighlights();
-        const hint = getBestMoveWithHint(engine);
-        if (!hint || !hint.move) { toast('Sem jogadas.', 'info'); return; }
-        const { move, reason } = hint;
-        engine.getValidMoves(move.piece.row, move.piece.col);
-        board.highlightSelection(move.piece.row, move.piece.col, [move.target]);
-        toast(`Dica: ${reason}`, 'success');
-    };
-  }
+  root.querySelector('#btn-hints').onclick = () => {
+    // No modo online, verifica se é o turno do jogador
+    if (isOnline) {
+      const currentTurn = engine.getState?.()?.turn;
+      const myNick = state.session?.nick;
+      if (currentTurn !== myNick) {
+        toast('Não é a sua vez.', 'warning');
+        return;
+      }
+    } else {
+      if (engine.getCurrentPlayer() !== 1) {
+        toast('Não é a sua vez.', 'warning');
+        return;
+      }
+    }
+    
+    // Verifica se o dado foi lançado
+    const diceValue = isOnline ? engine.getState?.()?.dice?.value : engine.getDice();
+    if (diceValue == null) {
+      toast('Lance o dado primeiro.', 'warning');
+      return;
+    }
+    
+    board.clearHighlights();
+    
+    // No modo online, usa o localValidator para calcular a dica
+    const validatorEngine = isOnline ? engine.getLocalValidator?.() : engine;
+    if (!validatorEngine) {
+      toast('Sistema de dicas indisponível.', 'error');
+      return;
+    }
+    
+    const hint = getBestMoveWithHint(validatorEngine);
+    if (!hint || !hint.move) {
+      toast('Sem jogadas.', 'info');
+      return;
+    }
+    
+    const { move, reason } = hint;
+    
+    // No modo online, transforma coordenadas lógicas para visuais
+    let pieceRow = move.piece.row;
+    let pieceCol = move.piece.col;
+    let targetPos = move.target;
+    
+    if (isOnline) {
+      // Transforma posição da peça
+      const visualPiece = engine.transformCoords(pieceRow, pieceCol);
+      pieceRow = visualPiece.row;
+      pieceCol = visualPiece.col;
+      
+      // Transforma posição do alvo
+      const visualTarget = engine.transformCoords(targetPos.row, targetPos.col);
+      targetPos = { row: visualTarget.row, col: visualTarget.col };
+    }
+    
+    const validMoves = validatorEngine.getValidMoves(move.piece.row, move.piece.col);
+    board.highlightSelection(pieceRow, pieceCol, [targetPos]);
+    toast(`Dica: ${reason}`, 'success');
+  };
   
   root.querySelector('#btn-shortcuts').onclick = (e) => {
     e.stopPropagation();
@@ -772,7 +818,7 @@ export function renderGameView(container) {
         if (modal) closeModal();
         else root.querySelector('#btn-exit').click();
     }
-    if (key === 'h' && !isOnline) root.querySelector('#btn-hints').click();
+    if (key === 'h') root.querySelector('#btn-hints').click();
     if (key === 'r') showRulesModal();
   };
   document.addEventListener('keydown', handleKeyPress);

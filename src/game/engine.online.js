@@ -187,6 +187,10 @@ export function createOnlineEngine() {
     getColumns() {
       return boardSize;
     },
+    
+    getState() {
+      return serverState;
+    },
 
     getHighlights() {
       if (!serverState || !serverState.selected) return [];
@@ -418,6 +422,11 @@ export function createOnlineEngine() {
       
       console.error(`[coordsToIndex] Linha inesperada: ${r}`);
       return 0;
+    },
+    
+    // Expõe o validador local para uso com AI (dicas)
+    getLocalValidator() {
+      return localValidator;
     }
   };
 }
