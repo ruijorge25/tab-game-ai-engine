@@ -473,18 +473,13 @@ export function renderGameView(container) {
       }
     }
     
-    const player1Captured = 9 - player1Pieces; // Peças MINHAS capturadas
-    const player2Captured = 9 - player2Pieces; // Peças do ADVERSÁRIO capturadas
-    
-    console.log('[GameView] Peças no tabuleiro:', { 
+    console.log('[GameView] Peças restantes:', { 
       minhas: player1Pieces, 
-      adversario: player2Pieces,
-      capturadas_minhas: player1Captured,
-      capturadas_adversario: player2Captured
+      adversario: player2Pieces
     });
     
-    root.querySelector('#counter-human').textContent = player2Captured; // Peças que EU capturei
-    root.querySelector('#counter-ai').textContent = player1Captured; // Peças que foram capturadas de mim
+    root.querySelector('#counter-human').textContent = player1Pieces; // Minhas peças restantes
+    root.querySelector('#counter-ai').textContent = player2Pieces; // Peças do adversário restantes
   }
 
   // 6. UPDATE LOCAL
