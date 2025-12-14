@@ -53,16 +53,49 @@ export const network = {
     return post('roll', { nick, password, game });
   },
 
+  // 🔥 CORREÇÃO: Aumentar delay e adicionar retry logic
   async notify(nick, password, game, cell, fromCell = null) {
     // Se fromCell for fornecido, enviamos 2 notifies em sequência
     if (fromCell !== null) {
-      // 1º notify: Seleciona a peça
-      await post('notify', { nick, password, game, cell: fromCell });
-      // Pequeno delay para servidor processar
-      await new Promise(resolve => setTimeout(resolve, 100));
+      try {
+        // 1º notify: Seleciona a peça
+        console.log(`[NETWORK] notify PARTE 1: Selecionando peça (cell=${fromCell})`);
+        await post('notify', { nick, password, game, cell: fromCell });
+        
+        // 🔥 CORREÇÃO: Aumentar delay de 100ms para 300ms
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+      } catch (err) {
+        // Se o 1º notify falhar, não tenta o 2º
+        console.error('[NETWORK] Erro ao selecionar peça:', err.message);
+        throw err;
+      }
     }
+    
     // 2º notify (ou único): Move/seleciona destino
-    return post('notify', { nick, password, game, cell });
+    console.log(`[NETWORK] notify PARTE 2: Movendo para destino (cell=${cell})`);
+    
+    // 🔥 CORREÇÃO: Retry até 2 vezes se der "roll the stick dice first"
+    let attempts = 0;
+    const maxAttempts = 2;
+    
+    while (attempts < maxAttempts) {
+      try {
+        return await post('notify', { nick, password, game, cell });
+      } catch (err) {
+        attempts++;
+        
+        // Se o erro é "roll the stick dice first" E ainda temos tentativas
+        if (err.message.includes('roll the stick dice first') && attempts < maxAttempts) {
+          console.warn(`[NETWORK] Tentativa ${attempts}/${maxAttempts} falhou. A aguardar 400ms...`);
+          await new Promise(resolve => setTimeout(resolve, 400));
+          continue; // Tenta novamente
+        }
+        
+        // Se chegou aqui, ou não é esse erro ou esgotaram-se as tentativas
+        throw err;
+      }
+    }
   },
 
   async pass(nick, password, game) {
