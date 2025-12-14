@@ -410,6 +410,17 @@ export function renderGameView(container) {
     // 🔥 CORREÇÃO 1: Verifica vitória via data.winner
     if (data.winner) {
       const isMe = (data.winner === state.session.nick);
+      
+      // 🔥 Salva resultado online no WebStorage
+      const opponent = Object.keys(data.players || {}).find(nick => nick !== state.session.nick) 
+                      || root.querySelector('#player-opponent .player-label')?.textContent 
+                      || 'Adversário';
+      
+      // Import dinâmico para evitar dependências circulares
+      import('../ui/Modal.js').then(mod => {
+        mod.saveOnlineResult({ won: isMe, opponent });
+      });
+      
       triggerEndGame(isMe ? 1 : 2, data.winner);
       return;
     }

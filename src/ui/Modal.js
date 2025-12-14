@@ -226,6 +226,17 @@ function createConfetti(count = 150) {
    FUNCIONALIDADES RESTAURADAS: LEADERBOARD LOCAL + ONLINE
    ================================================================= */
 
+// Helper: formata data para display
+function formatDate(isoString) {
+  const date = new Date(isoString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 /* Modal Inteligente: Mostra Local por defeito, com opção para Online */
 export function showLeaderboardModal() {
   // 1. Gera o HTML Local (Mantém-se igual)
@@ -271,28 +282,53 @@ export function showLeaderboardModal() {
     </div>
   `;
 
-  // 2. Prepara container para Online (MODIFICADO: Apenas texto, sem inputs)
-  const currentGroup = state.session.group || 34;
-  const currentSize = state.config.columns || 9;
-
+  // 2. Conteúdo da aba "Online" usando WebStorage
+  const onlineStats = getOnlineStats();
+  
   const onlineHTML = `
     <div id="tab-online" class="leaderboard-tab-content" style="display:none;">
-       <div id="online-controls" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:rgba(203,178,121,0.1); padding:12px; border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
-          <div style="font-size:0.95rem; color:var(--sand);">
-            <span style="opacity:0.7; margin-right:5px;">A visualizar:</span>
-            <strong>Grupo ${currentGroup}</strong> • <strong>${currentSize} Colunas</strong>
-          </div>
-          <button id="online-refresh" class="btn btn-secondary btn-small" style="margin:0; padding:6px 12px;">
-            Atualizar
-          </button>
-       </div>
-       
-       <div style="text-align:center; font-size:0.8rem; opacity:0.6; margin-bottom:15px; font-style:italic;">
-         (Para ver outros grupos, altere as configurações no Menu Principal)
+       <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:20px;">
+         <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Jogos</div>
+           <div style="font-size:1.5rem; font-weight:bold; color:var(--sand);">${onlineStats.gamesPlayed}</div>
+         </div>
+         <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Vitórias</div>
+           <div style="font-size:1.5rem; font-weight:bold; color:var(--green);">${onlineStats.wins}</div>
+         </div>
+         <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Derrotas</div>
+           <div style="font-size:1.5rem; font-weight:bold; color:var(--red);">${onlineStats.losses}</div>
+         </div>
+         <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Taxa de Vitória</div>
+           <div style="font-size:1.5rem; font-weight:bold; color:var(--sand);">${onlineStats.winRate}%</div>
+         </div>
        </div>
 
-       <div class="loader" style="text-align:center; padding:20px;">
-         <p>A carregar Ranking do Servidor...</p>
+       <div style="margin-bottom:15px;">
+         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px;">Últimos Jogos Online</h4>
+         <table class="leaderboard-table" style="width:100%; border-collapse:collapse;">
+           <thead>
+             <tr>
+               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Resultado</th>
+               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Adversário</th>
+               <th style="text-align:right; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Data</th>
+             </tr>
+           </thead>
+           <tbody>
+             ${onlineStats.topGames.map(game => `
+               <tr>
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:${game.won ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
+                   ${game.won ? 'Vitória' : 'Derrota'}
+                 </td>
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand);">${game.opponent}</td>
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:right; color:var(--cream); opacity:0.7;">${formatDate(game.date)}</td>
+               </tr>
+             `).join('')}
+             ${onlineStats.topGames.length === 0 ? '<tr><td colspan="3" style="padding:20px; text-align:center; color:var(--cream); opacity:0.5; font-style:italic;">Ainda não jogaste online...</td></tr>' : ''}
+           </tbody>
+         </table>
        </div>
     </div>
   `;
@@ -333,82 +369,9 @@ export function showLeaderboardModal() {
 
   btnLocal.onclick = () => activateTab(btnLocal, btnOnline, divLocal, divOnline);
 
-  btnOnline.onclick = async () => {
+  btnOnline.onclick = () => {
     activateTab(btnOnline, btnLocal, divOnline, divLocal);
-    
-    // Fetch Online se ainda não carregou
-    if (!divOnline.dataset.loaded) {
-       await fetchOnlineRanking(divOnline);
-       divOnline.dataset.loaded = "true";
-    }
-    
-    // Lógica do botão Atualizar (Simplificada: Apenas recarrega)
-    const btnRefresh = document.getElementById('online-refresh');
-    
-    const requery = async () => {
-      // Limpa conteúdo e volta a carregar
-      divOnline.querySelector('.leaderboard-content')?.remove();
-      
-      let loader = divOnline.querySelector('.loader');
-      if (!loader) {
-        loader = document.createElement('div');
-        loader.className = 'loader';
-        loader.style.textAlign = 'center';
-        loader.style.padding = '20px';
-        loader.innerHTML = '<p>A carregar Ranking do Servidor...</p>';
-        divOnline.appendChild(loader);
-      } else {
-        loader.style.display = 'block';
-      }
-      
-      await fetchOnlineRanking(divOnline);
-    };
-
-    if (btnRefresh && !btnRefresh.dataset.bound) {
-      btnRefresh.dataset.bound = 'true';
-      btnRefresh.onclick = requery;
-    }
   };
-}
-
-// Helper para buscar ranking online e injetar no HTML
-async function fetchOnlineRanking(container) {
-  try {
-    const group = state.session.group || 34;
-    const size = state.config.columns || 9;
-    const response = await network.getRanking(group, size);
-    const ranking = response.ranking || [];
-
-    const rows = ranking.length > 0 ? ranking.map((r, i) => `
-      <tr>
-        <td style="text-align:center">#${i+1}</td>
-        <td><strong>${r.nick}</strong></td>
-        <td style="text-align:center">${r.victories ?? r.wins ?? 0}</td>
-        <td style="text-align:center">${r.games ?? (r.wins + (r.losses||0)) ?? 0}</td>
-      </tr>
-    `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px;">Sem dados online.</td></tr>';
-
-    // Atualiza meta existente e revela
-    const meta = container.querySelector('#online-meta');
-    if (meta) {
-      meta.textContent = `Grupo: ${group} • Tamanho: ${size} colunas`;
-      meta.style.display = 'block';
-    }
-
-    // Injeta tabela mantendo container
-    container.querySelector('.loader')?.remove();
-    const wrap = document.createElement('div');
-    wrap.className = 'leaderboard-content';
-    wrap.innerHTML = `
-        <table class="games-table" style="width:100%">
-          <thead><tr><th>Pos</th><th>Nick</th><th>Vit</th><th>Jogos</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-    `;
-    container.appendChild(wrap);
-  } catch (err) {
-    container.innerHTML = `<p class="error" style="text-align:center; color:var(--red);">Erro: ${err.message}</p>`;
-  }
 }
 
 /* =================================================================
@@ -440,7 +403,7 @@ function getPlayerStats() {
   };
 }
 
-/* Salva resultado de jogo no localStorage */
+/* Salva resultado de jogo no localStorage (APENAS LOCAL) */
 export function saveGameResult({ won, captures, moves }) {
   const username = localStorage.getItem('tab_username') || 'Anônimo';
   const gamesData = JSON.parse(localStorage.getItem('tab_games') || '[]');
@@ -459,4 +422,53 @@ export function saveGameResult({ won, captures, moves }) {
   }
   
   localStorage.setItem('tab_games', JSON.stringify(gamesData));
+}
+
+/* =================================================================
+   ESTATÍSTICAS ONLINE (WebStorage)
+   ================================================================= */
+
+/* Obtém estatísticas de jogos online do WebStorage */
+function getOnlineStats() {
+  const username = localStorage.getItem('tab_username') || null;
+  const onlineGames = JSON.parse(localStorage.getItem('tab_online_games') || '[]');
+  
+  // Filtra jogos do usuário atual
+  const userGames = username 
+    ? onlineGames.filter(g => g.username === username)
+    : onlineGames;
+  
+  const wins = userGames.filter(g => g.won).length;
+  const losses = userGames.filter(g => !g.won).length;
+  const gamesPlayed = userGames.length;
+  const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+  
+  return {
+    username,
+    gamesPlayed,
+    wins,
+    losses,
+    winRate,
+    topGames: userGames.sort((a, b) => new Date(b.date) - new Date(a.date))
+  };
+}
+
+/* Salva resultado de jogo online no WebStorage */
+export function saveOnlineResult({ won, opponent }) {
+  const username = localStorage.getItem('tab_username') || state.session?.nick || 'Anônimo';
+  const onlineGames = JSON.parse(localStorage.getItem('tab_online_games') || '[]');
+  
+  onlineGames.push({
+    username,
+    won,
+    opponent: opponent || 'Adversário',
+    date: new Date().toISOString()
+  });
+  
+  // Mantém apenas últimos 200 jogos
+  if (onlineGames.length > 200) {
+    onlineGames.shift();
+  }
+  
+  localStorage.setItem('tab_online_games', JSON.stringify(onlineGames));
 }
