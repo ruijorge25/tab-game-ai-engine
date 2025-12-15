@@ -459,7 +459,7 @@ const server = http.createServer(async (req, res) => {
                         
                         if (!selected) {
                             // ========== PASSO 1: SELECIONAR PEÇA ==========
-                            const moves = engine.getValidMoves(row, col);
+                            const moves = engine.selectPiece(row, col);
                             
                             if (moves.length === 0) {
                                 throw new Error("Peça sem movimentos válidos");
@@ -469,51 +469,57 @@ const server = http.createServer(async (req, res) => {
                             gNotify.validMovesCache = moves;
                             
                             // ✅ Peça selecionada com sucesso
-                            // Motor guarda internamente, apenas notificamos
                             notifyClients(gNotify, cellIndex);
                             
                         } else {
-                            // ========== PASSO 2: MOVER PEÇA ==========
-                            const result = engine.moveSelectedTo(row, col);
-                            
-                            // 🔥 LIMPA cache
-                            delete gNotify.validMovesCache;
-                            
-                            // ✅ Gerir turno
-                            if (!result.extraTurn) {
-                                const playerNicks = Object.keys(gNotify.playersData);
-                                const p1 = playerNicks[0];
-                                const p2 = playerNicks[1];
-                                gNotify.turn = (gNotify.turn === p1) ? p2 : p1;
-                            }
-                            
-                            // ✅ Reset timer de inatividade
-                            resetGameTimer(gNotify);
-                            
-                            // ✅ Verificar vitória
-                            const winnerCode = engine.checkWinner();
-                            if (winnerCode) {
-                                const p1 = Object.keys(gNotify.playersData)[0];
-                                const p2 = Object.keys(gNotify.playersData)[1];
-                                gNotify.winner = (winnerCode === 1) ? p1 : p2;
+                            // ========== PASSO 2: MOVER OU DESELECIONAR ==========
+                            if (selected.row === row && selected.col === col) {
+                                // Toggle: clicar na mesma peça cancela seleção
+                                engine.deselect();
+                                delete gNotify.validMovesCache;
+                                notifyClients(gNotify, cellIndex);
+                            } else {
+                                const result = engine.moveSelectedTo(row, col);
                                 
-                                // Atualizar stats
-                                const wU = users.find(u => u.nick === gNotify.winner);
-                                if(wU){ wU.wins++; wU.games++; }
-                                const lNick = (gNotify.winner === p1) ? p2 : p1;
-                                const lU = users.find(u => u.nick === lNick);
-                                if(lU){ lU.games++; }
-                                saveData();
+                                // 🔥 LIMPA cache
+                                delete gNotify.validMovesCache;
                                 
-                                // Limpar timer
-                                if (gameTimers.has(gNotify.id)) {
-                                    clearTimeout(gameTimers.get(gNotify.id));
-                                    gameTimers.delete(gNotify.id);
+                                // ✅ Gerir turno
+                                if (!result.extraTurn) {
+                                    const playerNicks = Object.keys(gNotify.playersData);
+                                    const p1 = playerNicks[0];
+                                    const p2 = playerNicks[1];
+                                    gNotify.turn = (gNotify.turn === p1) ? p2 : p1;
                                 }
+                                
+                                // ✅ Reset timer de inatividade
+                                resetGameTimer(gNotify);
+                                
+                                // ✅ Verificar vitória
+                                const winnerCode = engine.checkWinner();
+                                if (winnerCode) {
+                                    const p1 = Object.keys(gNotify.playersData)[0];
+                                    const p2 = Object.keys(gNotify.playersData)[1];
+                                    gNotify.winner = (winnerCode === 1) ? p1 : p2;
+                                    
+                                    // Atualizar stats
+                                    const wU = users.find(u => u.nick === gNotify.winner);
+                                    if(wU){ wU.wins++; wU.games++; }
+                                    const lNick = (gNotify.winner === p1) ? p2 : p1;
+                                    const lU = users.find(u => u.nick === lNick);
+                                    if(lU){ lU.games++; }
+                                    saveData();
+                                    
+                                    // Limpar timer
+                                    if (gameTimers.has(gNotify.id)) {
+                                        clearTimeout(gameTimers.get(gNotify.id));
+                                        gameTimers.delete(gNotify.id);
+                                    }
+                                }
+                                
+                                // ✅ Notificar clientes
+                                notifyClients(gNotify, cellIndex);
                             }
-                            
-                            // ✅ Notificar clientes
-                            notifyClients(gNotify, cellIndex);
                         }
                         
                     } catch (err) {
