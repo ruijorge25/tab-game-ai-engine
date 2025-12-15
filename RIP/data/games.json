@@ -1,0 +1,23 @@
+[
+  {
+    "id": "cf2b2d856515b8d92f8afd310b0d0a71",
+    "group": 34,
+    "size": 9,
+    "playersData": {
+      "iara": "yellow",
+      "rui": "blue"
+    },
+    "turn": "iara",
+    "winner": null
+  },
+  {
+    "id": "2ebfee3a05fe2589aae60d2b4043d84a",
+    "group": 34,
+    "size": 9,
+    "playersData": {
+      "rui": "yellow"
+    },
+    "turn": "rui",
+    "winner": null
+  }
+]

@@ -1,6 +1,6 @@
 // src/core/network.js
 
-const BASE_URL = 'http://twserver.alunos.dcc.fc.up.pt:8008';
+const BASE_URL = 'http://twserver.alunos.dcc.fc.up.pt:8134';
 
 // Função genérica para pedidos POST
 async function post(endpoint, data) {
