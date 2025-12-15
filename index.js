@@ -2,8 +2,8 @@ import http from 'http';
 import url from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
-import { headers, sseHeaders } from './utils/headers.js';
-import { createTabEngine } from './game/engine.tab.js';
+import { headers, sseHeaders } from './RIP/utils/headers.js';
+import { createTabEngine } from './RIP/game/engine.tab.js';
 
 // Porta definida pelo enunciado (81XX -> XX é o grupo)
 const PORT = process.env.PORT || 8134; 
@@ -18,11 +18,11 @@ let games = [];
 const gameTimers = new Map(); // Map<gameId, timeoutId>
 
 //PERSISTÊNCIA (Requisito: usar módulo fs)
-const USERS_FILE = './data/users.json';
-const GAMES_FILE = './data/games.json';
+const USERS_FILE = './RIP/data/users.json';
+const GAMES_FILE = './RIP/data/games.json';
 
 // Garante diretoria de dados
-if (!fs.existsSync('./data')) fs.mkdirSync('./data');
+if (!fs.existsSync('./RIP/data')) fs.mkdirSync('./RIP/data', { recursive: true });
 
 function loadData() {
     try {
