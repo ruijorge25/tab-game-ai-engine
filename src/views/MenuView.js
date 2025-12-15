@@ -406,18 +406,16 @@ function showGameModeModal(container, isLoggedIn, nick, password) {
       const originalGroup = state.session.group || 34;
       const sizeVal = state.config.columns || 9;
       
-      // TRUQUE: Cria um "grupo virtual" combinando o ID do grupo com o tamanho.
-      // Ex: Grupo 34, Tam 7 -> Envia 3407
-      // Ex: Grupo 34, Tam 9 -> Envia 3409
-      // Isto garante isolamento total no servidor sem mexer no código dele.
-      const effectiveGroup = (originalGroup * 100) + sizeVal;
+      // [CORREÇÃO] 
+      // O servidor RIP já filtra por Size no endpoint /ranking.
+      // Não devemos alterar o número do grupo (ex: 3409), senão o ranking do grupo 34 fica vazio.
 
       try {
         btnStartOnline.disabled = true;
         btnStartOnline.innerHTML = '<span class="pulse">A procurar adversário...</span>';
         
-        // Envia o effectiveGroup em vez do originalGroup
-        const data = await network.join(effectiveGroup, state.session.nick, state.session.password, sizeVal);
+        // Envia o originalGroup diretamente
+        const data = await network.join(originalGroup, state.session.nick, state.session.password, sizeVal);
         
         if (data.game) {
           state.session.gameId = data.game;
