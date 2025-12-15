@@ -789,7 +789,14 @@ export function renderGameView(container) {
     // Se for local, guarda logo o resultado
     if (!isOnline) saveGameResult(stats);
 
-    // Pequeno delay para o jogador processar o último movimento antes do modal abrir
+    // [CORREÇÃO] Se for online, navega IMEDIATAMENTE para o menu.
+    // Isto evita que o jogador fique preso no tabuleiro "congelado" se fechar o modal.
+    if (isOnline) {
+      state.session.gameId = null;
+      navigateTo('menu');
+    }
+
+    // Pequeno delay para a transição
     setTimeout(() => {
       showVictoryModal({ 
         winner: isOnline ? winnerName : winnerCode, 
@@ -797,25 +804,19 @@ export function renderGameView(container) {
         
         // --- JOGAR NOVAMENTE ---
         onPlayAgain: async () => {
-             // 1. Fecha o modal primeiro para não ficar "pendurado"
              closeModal();
 
              if (isOnline) {
-               // MODO ONLINE: Procura novo jogo sem sair do ecrã
-               
-               // a. Desliga a conexão do jogo anterior
+               // MODO ONLINE
                if (unsubscribeSSE) {
-                 unsubscribeSSE();
-                 unsubscribeSSE = null;
+                 unsubscribeSSE = null; // A conexão já foi fechada ao sair da view, limpamos a ref
                }
 
-               // b. Feedback visual imediato (reutiliza o estilo waiting-server)
-               root.classList.add('waiting-server'); 
+               // [CORREÇÃO] Usamos document.body porque a 'root' do jogo já foi removida do DOM
+               document.body.classList.add('waiting-server'); 
                toast('A procurar novo adversário...', 'info');
 
                try {
-                 // [CORREÇÃO] Nome da função: network.join (não joinGame)
-                 // [CORREÇÃO] Ordem dos argumentos: group, nick, password, size
                  const newGameData = await network.join(
                     state.session.group || 34, 
                     state.session.nick, 
@@ -823,39 +824,35 @@ export function renderGameView(container) {
                     state.config.columns || 9
                  );
 
-                 // [CORREÇÃO] O servidor retorna { game: "hash" }, não gameId
                  if (newGameData.game) {
                    state.session.gameId = newGameData.game;
-                   
-                   // Força o "reset" do componente
-                   navigateTo('game'); 
+                   navigateTo('game'); // Volta para o jogo
                  } else {
                    throw new Error('ID de jogo inválido');
                  }
                } catch (err) {
                  console.error(err);
                  toast('Erro ao encontrar jogo: ' + err.message, 'error');
-                 setTimeout(() => navigateTo('menu'), 2000);
+               } finally {
+                 document.body.classList.remove('waiting-server');
                }
 
              } else {
-               // MODO LOCAL: Apenas recarrega a vista
+               // MODO LOCAL
                navigateTo('game');
              }
         },
 
         // --- SAIR PARA O MENU ---
         onGoToMenu: () => {
-            closeModal(); // Fecha visualmente
-            
-            // Limpa conexão antes de sair
-            if (unsubscribeSSE) {
-                unsubscribeSSE();
-                unsubscribeSSE = null;
+            closeModal(); 
+            // Se for local, navega agora. 
+            // Se for online, já estamos no menu, mas o navigate garante consistência.
+            if (!isOnline) {
+                state.session.gameId = null;
+                if (unsubscribeSSE) { unsubscribeSSE(); unsubscribeSSE = null; }
+                navigateTo('menu');
             }
-            
-            state.session.gameId = null;
-            navigateTo('menu');
         }
       });
     }, 800);
@@ -867,7 +864,14 @@ export function renderGameView(container) {
       state.session.gameId,
       state.session.nick,
       onServerUpdate,
-      (err) => { toast(err, 'error'); }
+      (err) => { 
+          toast(err, 'error');
+          // ✅ Redirecionar para menu após erro crítico
+          setTimeout(() => {
+              state.session.gameId = null;
+              navigateTo('menu');
+          }, 3000);
+      }
     );
   } else {
     updateHUDLocal();

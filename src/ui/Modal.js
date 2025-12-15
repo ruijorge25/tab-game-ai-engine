@@ -287,6 +287,8 @@ export function showLeaderboardModal() {
   
   const onlineHTML = `
     <div id="tab-online" class="leaderboard-tab-content" style="display:none;">
+       ${!onlineStats.username ? '<p style="text-align:center; opacity:0.7; padding:20px;">Faz login para veres as tuas estatísticas online.</p>' : `
+       
        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:20px;">
          <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
            <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Jogos</div>
@@ -301,35 +303,64 @@ export function showLeaderboardModal() {
            <div style="font-size:1.5rem; font-weight:bold; color:var(--red);">${onlineStats.losses}</div>
          </div>
          <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
-           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Taxa de Vitória</div>
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Win Rate</div>
            <div style="font-size:1.5rem; font-weight:bold; color:var(--sand);">${onlineStats.winRate}%</div>
          </div>
        </div>
 
-       <div style="margin-bottom:15px;">
-         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px;">Últimos Jogos Online</h4>
+       <div style="margin-bottom:25px;">
+         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px; border-bottom:1px solid rgba(203,178,121,0.2); padding-bottom:5px;">
+            Confrontos por Adversário
+         </h4>
+         <div style="max-height: 150px; overflow-y: auto;">
+           <table class="leaderboard-table" style="width:100%; border-collapse:collapse;">
+             <thead>
+               <tr>
+                 <th style="text-align:left; padding:8px; color:var(--sand); opacity:0.8;">Adversário</th>
+                 <th style="text-align:center; padding:8px; color:var(--green); opacity:0.8;">V</th>
+                 <th style="text-align:center; padding:8px; color:var(--red); opacity:0.8;">D</th>
+                 <th style="text-align:right; padding:8px; color:var(--sand); opacity:0.8;">Total</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${onlineStats.opponentStats.map(opp => `
+                 <tr style="border-bottom:1px solid rgba(203,178,121,0.05);">
+                   <td style="padding:8px; color:var(--cream); font-weight:500;">${opp.name}</td>
+                   <td style="padding:8px; text-align:center; color:var(--green); font-weight:bold;">${opp.wins}</td>
+                   <td style="padding:8px; text-align:center; color:var(--red); font-weight:bold;">${opp.losses}</td>
+                   <td style="padding:8px; text-align:right; opacity:0.7;">${opp.total}</td>
+                 </tr>
+               `).join('')}
+               ${onlineStats.opponentStats.length === 0 ? '<tr><td colspan="4" style="padding:15px; text-align:center; font-style:italic; opacity:0.5;">Sem registos de adversários.</td></tr>' : ''}
+             </tbody>
+           </table>
+         </div>
+       </div>
+
+       <div>
+         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px;">Histórico Recente</h4>
          <table class="leaderboard-table" style="width:100%; border-collapse:collapse;">
            <thead>
              <tr>
-               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Resultado</th>
-               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Adversário</th>
-               <th style="text-align:right; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Data</th>
+               <th style="text-align:left; padding:10px; color:var(--sand); opacity:0.8;">Resultado</th>
+               <th style="text-align:left; padding:10px; color:var(--sand); opacity:0.8;">Adversário</th>
+               <th style="text-align:right; padding:10px; color:var(--sand); opacity:0.8;">Data</th>
              </tr>
            </thead>
            <tbody>
-             ${onlineStats.topGames.map(game => `
+             ${onlineStats.topGames.slice(0, 10).map(game => `
                <tr>
-                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:${game.won ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
+                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); color:${game.won ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
                    ${game.won ? 'Vitória' : 'Derrota'}
                  </td>
-                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand);">${game.opponent}</td>
-                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:right; color:var(--cream); opacity:0.7;">${formatDate(game.date)}</td>
+                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand);">${game.opponent}</td>
+                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:right; color:var(--cream); opacity:0.7; font-size:0.85rem;">${formatDate(game.date)}</td>
                </tr>
              `).join('')}
-             ${onlineStats.topGames.length === 0 ? '<tr><td colspan="3" style="padding:20px; text-align:center; color:var(--cream); opacity:0.5; font-style:italic;">Ainda não jogaste online...</td></tr>' : ''}
            </tbody>
          </table>
        </div>
+       `}
     </div>
   `;
 
@@ -430,18 +461,38 @@ export function saveGameResult({ won, captures, moves }) {
 
 /* Obtém estatísticas de jogos online do WebStorage */
 function getOnlineStats() {
-  const username = localStorage.getItem('tab_username') || null;
+  // Prioriza o nick da sessão atual (state), senão tenta o localStorage
+  const username = state.session?.nick || localStorage.getItem('tab_username') || null;
   const onlineGames = JSON.parse(localStorage.getItem('tab_online_games') || '[]');
   
-  // Filtra jogos do usuário atual
+  // Filtra jogos do utilizador atual
   const userGames = username 
     ? onlineGames.filter(g => g.username === username)
-    : onlineGames;
+    : []; // Se não houver user, não mostra nada
   
   const wins = userGames.filter(g => g.won).length;
   const losses = userGames.filter(g => !g.won).length;
   const gamesPlayed = userGames.length;
   const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+
+  // --- NOVA LÓGICA: Agrupar por adversário ---
+  const statsByOpponent = {};
+
+  userGames.forEach(game => {
+    const opp = game.opponent || 'Desconhecido';
+    if (!statsByOpponent[opp]) {
+      statsByOpponent[opp] = { name: opp, wins: 0, losses: 0, total: 0 };
+    }
+    statsByOpponent[opp].total++;
+    if (game.won) {
+      statsByOpponent[opp].wins++;
+    } else {
+      statsByOpponent[opp].losses++;
+    }
+  });
+
+  // Converter para array e ordenar por número de jogos
+  const opponentStats = Object.values(statsByOpponent).sort((a, b) => b.total - a.total);
   
   return {
     username,
@@ -449,6 +500,7 @@ function getOnlineStats() {
     wins,
     losses,
     winRate,
+    opponentStats, // <--- Novo campo devolvido
     topGames: userGames.sort((a, b) => new Date(b.date) - new Date(a.date))
   };
 }

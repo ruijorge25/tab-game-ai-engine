@@ -1,7 +1,7 @@
 export const headers = {
     'Access-Control-Allow-Origin': '*', // Permite acesso de qualquer origem (crucial para o frontend)
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization', // ✅ Adicionar Authorization
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache'
 };
