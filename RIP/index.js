@@ -32,13 +32,19 @@ function loadData() {
     try {
         if (fs.existsSync(USERS_FILE)) users = JSON.parse(fs.readFileSync(USERS_FILE));
         
-        // Não carrega jogos antigos - devem ser recriados
+        // Carrega jogos TERMINADOS para rankings (sem engine/responses)
         if (fs.existsSync(GAMES_FILE)) {
             const savedGames = JSON.parse(fs.readFileSync(GAMES_FILE));
-            console.log(`[LOAD] Ignorando ${savedGames.length} jogos antigos`);
+            // Só carrega jogos que já terminaram (com winner) - jogos ativos são recriados
+            games = savedGames.filter(g => g.winner);
+            console.log(`[LOAD] Carregados ${games.length} jogos terminados para rankings`);
+        } else {
+            games = [];
         }
-        games = []; 
-    } catch (e) { console.error("Erro ao carregar dados:", e); }
+    } catch (e) { 
+        console.error("Erro ao carregar dados:", e);
+        games = [];
+    }
 }
 
 function saveData() {
@@ -339,20 +345,20 @@ const server = http.createServer(async (req, res) => {
                     }
                     
                     const rankGroup = parseInt(body.group);
-                    const rankSize = parseFloat(body.size);
+                    const rankSize = parseInt(body.size);
                     
                     // Validação 3: group não numérico
-                    if (isNaN(rankGroup) || typeof body.group !== 'number') {
+                    if (isNaN(rankGroup)) {
                         throw { status: 400, msg: `Invalid group '${body.group}'` };
                     }
                     
                     // Validação 4: size não inteiro ou inválido
-                    if (isNaN(rankSize) || !Number.isInteger(rankSize) || rankSize < 3 || rankSize > 15 || rankSize % 2 === 0) {
+                    if (isNaN(rankSize) || rankSize < 3 || rankSize > 15 || rankSize % 2 === 0) {
                         throw { status: 400, msg: `Invalid size '${body.size}'` };
                     }
                     
                     // Calcula stats por grupo E tamanho filtrando games
-                    const groupGames = games.filter(g => g.group === rankGroup && g.size == rankSize && g.winner);
+                    const groupGames = games.filter(g => g.group == rankGroup && g.size == rankSize && g.winner);
                     const groupStats = {};
                     
                     groupGames.forEach(g => {

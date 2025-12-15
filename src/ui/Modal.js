@@ -287,8 +287,6 @@ export function showLeaderboardModal() {
   
   const onlineHTML = `
     <div id="tab-online" class="leaderboard-tab-content" style="display:none;">
-       ${!onlineStats.username ? '<p style="text-align:center; opacity:0.7; padding:20px;">Faz login para veres as tuas estatísticas online.</p>' : `
-       
        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:20px;">
          <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
            <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Jogos</div>
@@ -303,64 +301,54 @@ export function showLeaderboardModal() {
            <div style="font-size:1.5rem; font-weight:bold; color:var(--red);">${onlineStats.losses}</div>
          </div>
          <div class="stat-card" style="text-align:center; padding:15px; background:rgba(203,178,121,0.1); border-radius:8px; border:1px solid rgba(203,178,121,0.2);">
-           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Win Rate</div>
+           <div style="font-size:0.85rem; opacity:0.7; margin-bottom:5px; color:var(--sand);">Taxa de Vitória</div>
            <div style="font-size:1.5rem; font-weight:bold; color:var(--sand);">${onlineStats.winRate}%</div>
          </div>
        </div>
 
-       <div style="margin-bottom:25px;">
-         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px; border-bottom:1px solid rgba(203,178,121,0.2); padding-bottom:5px;">
-            Confrontos por Adversário
-         </h4>
-         <div style="max-height: 150px; overflow-y: auto;">
-           <table class="leaderboard-table" style="width:100%; border-collapse:collapse;">
-             <thead>
-               <tr>
-                 <th style="text-align:left; padding:8px; color:var(--sand); opacity:0.8;">Adversário</th>
-                 <th style="text-align:center; padding:8px; color:var(--green); opacity:0.8;">V</th>
-                 <th style="text-align:center; padding:8px; color:var(--red); opacity:0.8;">D</th>
-                 <th style="text-align:right; padding:8px; color:var(--sand); opacity:0.8;">Total</th>
-               </tr>
-             </thead>
-             <tbody>
-               ${onlineStats.opponentStats.map(opp => `
-                 <tr style="border-bottom:1px solid rgba(203,178,121,0.05);">
-                   <td style="padding:8px; color:var(--cream); font-weight:500;">${opp.name}</td>
-                   <td style="padding:8px; text-align:center; color:var(--green); font-weight:bold;">${opp.wins}</td>
-                   <td style="padding:8px; text-align:center; color:var(--red); font-weight:bold;">${opp.losses}</td>
-                   <td style="padding:8px; text-align:right; opacity:0.7;">${opp.total}</td>
-                 </tr>
-               `).join('')}
-               ${onlineStats.opponentStats.length === 0 ? '<tr><td colspan="4" style="padding:15px; text-align:center; font-style:italic; opacity:0.5;">Sem registos de adversários.</td></tr>' : ''}
-             </tbody>
-           </table>
-         </div>
-       </div>
-
-       <div>
-         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px;">Histórico Recente</h4>
+       <div style="margin-bottom:15px;">
+         <h4 style="color:var(--sand); opacity:0.9; margin-bottom:10px;">Últimos Jogos Online</h4>
          <table class="leaderboard-table" style="width:100%; border-collapse:collapse;">
            <thead>
              <tr>
-               <th style="text-align:left; padding:10px; color:var(--sand); opacity:0.8;">Resultado</th>
-               <th style="text-align:left; padding:10px; color:var(--sand); opacity:0.8;">Adversário</th>
-               <th style="text-align:right; padding:10px; color:var(--sand); opacity:0.8;">Data</th>
+               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Resultado</th>
+               <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Adversário</th>
+               <th style="text-align:right; padding:10px; border-bottom:1px solid rgba(203,178,121,0.2); color:var(--sand); opacity:0.8;">Data</th>
              </tr>
            </thead>
            <tbody>
-             ${onlineStats.topGames.slice(0, 10).map(game => `
+             ${onlineStats.topGames.map(game => `
                <tr>
-                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); color:${game.won ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:${game.won ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
                    ${game.won ? 'Vitória' : 'Derrota'}
                  </td>
-                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand);">${game.opponent}</td>
-                 <td style="padding:8px 10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:right; color:var(--cream); opacity:0.7; font-size:0.85rem;">${formatDate(game.date)}</td>
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand);">${game.opponent}</td>
+                 <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:right; color:var(--cream); opacity:0.7;">${formatDate(game.date)}</td>
                </tr>
              `).join('')}
+             ${onlineStats.topGames.length === 0 ? '<tr><td colspan="3" style="padding:20px; text-align:center; color:var(--cream); opacity:0.5; font-style:italic;">Ainda não jogaste online...</td></tr>' : ''}
            </tbody>
          </table>
        </div>
-       `}
+    </div>
+  `;
+
+  // 3. Conteúdo da aba "Ranking Servidor"
+  const serverHTML = `
+    <div id="tab-server" class="leaderboard-tab-content" style="display:none;">
+      <div style="text-align:center; padding:20px;">
+        <p style="margin-bottom:15px; color:var(--sand); font-size:0.95em;">Ranking competitivo do servidor</p>
+        <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px; align-items:center;">
+          <input type="number" id="server-group" placeholder="Grupo" value="${state.config?.group || 34}" 
+                 style="width:100px; padding:8px; background:rgba(203,178,121,0.1); border:1px solid rgba(203,178,121,0.3); color:var(--cream); border-radius:4px;" />
+          <input type="number" id="server-size" placeholder="Tamanho" value="${state.config?.columns || 9}" 
+                 style="width:100px; padding:8px; background:rgba(203,178,121,0.1); border:1px solid rgba(203,178,121,0.3); color:var(--cream); border-radius:4px;" />
+          <button id="btn-fetch-ranking" class="btn btn-secondary" style="padding:8px 16px; font-size:0.9em;">Buscar</button>
+        </div>
+        <div id="server-ranking-container">
+          <p style="opacity:0.5; font-style:italic; font-size:0.9em;">Clica em "Buscar" para ver o ranking do servidor</p>
+        </div>
+      </div>
     </div>
   `;
 
@@ -370,39 +358,109 @@ export function showLeaderboardModal() {
     content: `
       <div class="tabs-header" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid rgba(203,178,121,0.2); padding-bottom:5px;">
         <button id="btn-tab-local" class="btn-tab active" style="background:none; border:none; color:var(--sand); padding:10px; cursor:pointer; font-weight:bold; border-bottom:2px solid var(--sand);">Local</button>
-        <button id="btn-tab-online" class="btn-tab" style="background:none; border:none; color:var(--cream); opacity:0.6; padding:10px; cursor:pointer;">Online</button>
+        <button id="btn-tab-online" class="btn-tab" style="background:none; border:none; color:var(--cream); opacity:0.6; padding:10px; cursor:pointer;">Meus Jogos</button>
+        <button id="btn-tab-server" class="btn-tab" style="background:none; border:none; color:var(--cream); opacity:0.6; padding:10px; cursor:pointer;">Ranking Servidor</button>
       </div>
       ${localHTML}
       ${onlineHTML}
+      ${serverHTML}
     `,
     buttons: [
       { text: 'Fechar', className: 'btn btn-primary' }
     ]
   });
 
-  // 3. Lógica das Abas
+  // 4. Lógica das Abas
   const btnLocal = document.getElementById('btn-tab-local');
   const btnOnline = document.getElementById('btn-tab-online');
+  const btnServer = document.getElementById('btn-tab-server');
   const divLocal = document.getElementById('tab-local');
   const divOnline = document.getElementById('tab-online');
+  const divServer = document.getElementById('tab-server');
 
   // Estilo visual da aba ativa vs inativa
-  const activateTab = (activeBtn, inactiveBtn, activeDiv, inactiveDiv) => {
-    activeDiv.style.display = 'block';
-    inactiveDiv.style.display = 'none';
+  const activateTab = (activeBtn, activeDiv) => {
+    // Esconder todas as abas
+    [divLocal, divOnline, divServer].forEach(div => div.style.display = 'none');
+    // Resetar estilos de todos os botões
+    [btnLocal, btnOnline, btnServer].forEach(btn => {
+      btn.style.opacity = '0.6';
+      btn.style.borderBottom = '2px solid transparent';
+    });
     
+    // Ativar a aba selecionada
+    activeDiv.style.display = 'block';
     activeBtn.style.opacity = '1';
     activeBtn.style.borderBottom = '2px solid var(--sand)';
-    
-    inactiveBtn.style.opacity = '0.6';
-    inactiveBtn.style.borderBottom = '2px solid transparent';
   };
 
-  btnLocal.onclick = () => activateTab(btnLocal, btnOnline, divLocal, divOnline);
+  btnLocal.onclick = () => activateTab(btnLocal, divLocal);
+  btnOnline.onclick = () => activateTab(btnOnline, divOnline);
+  btnServer.onclick = () => activateTab(btnServer, divServer);
 
-  btnOnline.onclick = () => {
-    activateTab(btnOnline, btnLocal, divOnline, divLocal);
-  };
+  // 5. Buscar Rankings do Servidor
+  const btnFetchRanking = document.getElementById('btn-fetch-ranking');
+  const rankingContainer = document.getElementById('server-ranking-container');
+  
+  if (btnFetchRanking) {
+    btnFetchRanking.onclick = async () => {
+      const group = parseInt(document.getElementById('server-group').value);
+      const size = parseInt(document.getElementById('server-size').value);
+      
+      if (!group || !size) {
+        rankingContainer.innerHTML = '<p style="color:var(--red); font-size:0.9em;">Por favor, preenche grupo e tamanho</p>';
+        return;
+      }
+      
+      rankingContainer.innerHTML = '<p style="opacity:0.7; font-size:0.9em;">A carregar rankings...</p>';
+      
+      try {
+        const data = await network.getRanking(group, size);
+        
+        if (!data.ranking || data.ranking.length === 0) {
+          rankingContainer.innerHTML = '<p style="opacity:0.5; font-style:italic; font-size:0.9em;">Sem rankings para este grupo/tamanho ainda</p>';
+          return;
+        }
+        
+        const currentNick = state.session?.nick || localStorage.getItem('tab_username');
+        
+        rankingContainer.innerHTML = `
+          <table class="leaderboard-table" style="width:100%; border-collapse:collapse; margin-top:10px;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.3); color:var(--sand); font-size:0.85em;">#</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid rgba(203,178,121,0.3); color:var(--sand); font-size:0.85em;">Nick</th>
+                <th style="text-align:center; padding:10px; border-bottom:1px solid rgba(203,178,121,0.3); color:var(--sand); font-size:0.85em;">Vitórias</th>
+                <th style="text-align:center; padding:10px; border-bottom:1px solid rgba(203,178,121,0.3); color:var(--sand); font-size:0.85em;">Jogos</th>
+                <th style="text-align:center; padding:10px; border-bottom:1px solid rgba(203,178,121,0.3); color:var(--sand); font-size:0.85em;">Taxa</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.ranking.map((player, index) => {
+                const winRate = player.games > 0 ? Math.round((player.victories / player.games) * 100) : 0;
+                const isCurrentUser = player.nick === currentNick;
+                return `
+                  <tr style="background:${isCurrentUser ? 'rgba(203,178,121,0.15)' : 'transparent'}; transition: background 0.2s;">
+                    <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--sand); font-weight:bold; font-size:0.9em;">${index + 1}</td>
+                    <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); color:var(--cream); ${isCurrentUser ? 'font-weight:bold;' : ''} font-size:0.9em;">${player.nick}${isCurrentUser ? ' (tu)' : ''}</td>
+                    <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:center; color:var(--green); font-weight:bold; font-size:0.9em;">${player.victories}</td>
+                    <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:center; color:var(--sand); font-size:0.9em;">${player.games}</td>
+                    <td style="padding:10px; border-bottom:1px solid rgba(203,178,121,0.1); text-align:center; color:var(--sand); font-size:0.9em;">${winRate}%</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          <p style="margin-top:15px; opacity:0.6; font-size:0.8em; text-align:center;">Top 10 jogadores • Grupo ${group} • Tabuleiro ${size}x4</p>
+        `;
+        
+      } catch (err) {
+        console.error('[Modal] Erro ao buscar ranking:', err);
+        const errorMsg = err.message || 'Não foi possível carregar o ranking';
+        rankingContainer.innerHTML = `<p style="color:var(--red); font-size:0.9em;">Erro: ${errorMsg}</p>`;
+      }
+    };
+  }
 }
 
 /* =================================================================
@@ -461,38 +519,18 @@ export function saveGameResult({ won, captures, moves }) {
 
 /* Obtém estatísticas de jogos online do WebStorage */
 function getOnlineStats() {
-  // Prioriza o nick da sessão atual (state), senão tenta o localStorage
-  const username = state.session?.nick || localStorage.getItem('tab_username') || null;
+  const username = localStorage.getItem('tab_username') || null;
   const onlineGames = JSON.parse(localStorage.getItem('tab_online_games') || '[]');
   
-  // Filtra jogos do utilizador atual
+  // Filtra jogos do usuário atual
   const userGames = username 
     ? onlineGames.filter(g => g.username === username)
-    : []; // Se não houver user, não mostra nada
+    : onlineGames;
   
   const wins = userGames.filter(g => g.won).length;
   const losses = userGames.filter(g => !g.won).length;
   const gamesPlayed = userGames.length;
   const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
-
-  // --- NOVA LÓGICA: Agrupar por adversário ---
-  const statsByOpponent = {};
-
-  userGames.forEach(game => {
-    const opp = game.opponent || 'Desconhecido';
-    if (!statsByOpponent[opp]) {
-      statsByOpponent[opp] = { name: opp, wins: 0, losses: 0, total: 0 };
-    }
-    statsByOpponent[opp].total++;
-    if (game.won) {
-      statsByOpponent[opp].wins++;
-    } else {
-      statsByOpponent[opp].losses++;
-    }
-  });
-
-  // Converter para array e ordenar por número de jogos
-  const opponentStats = Object.values(statsByOpponent).sort((a, b) => b.total - a.total);
   
   return {
     username,
@@ -500,7 +538,6 @@ function getOnlineStats() {
     wins,
     losses,
     winRate,
-    opponentStats, // <--- Novo campo devolvido
     topGames: userGames.sort((a, b) => new Date(b.date) - new Date(a.date))
   };
 }
