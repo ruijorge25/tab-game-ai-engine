@@ -1,7 +1,3 @@
-/*
- * index.js - Servidor Principal
- * Cumpre os requisitos: Estruturação, Persistência, Hash, Pedidos e Respostas.
- */
 import http from 'http';
 import url from 'url';
 import fs from 'fs';
@@ -16,12 +12,12 @@ const PORT = process.env.PORT || 8134;
 const GAME_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
 const LOBBY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos aguardando
 
-// --- ESTADO EM MEMÓRIA ---
+//ESTADO EM MEMÓRIA
 let users = [];
 let games = [];
 const gameTimers = new Map(); // Map<gameId, timeoutId>
 
-// --- PERSISTÊNCIA (Requisito: usar módulo fs) ---
+//PERSISTÊNCIA (Requisito: usar módulo fs)
 const USERS_FILE = './data/users.json';
 const GAMES_FILE = './data/games.json';
 
@@ -32,10 +28,10 @@ function loadData() {
     try {
         if (fs.existsSync(USERS_FILE)) users = JSON.parse(fs.readFileSync(USERS_FILE));
         
-        // Carrega jogos TERMINADOS para rankings (sem engine/responses)
+        // Carrega jogos TERMINADOS para rankings 
         if (fs.existsSync(GAMES_FILE)) {
             const savedGames = JSON.parse(fs.readFileSync(GAMES_FILE));
-            // Só carrega jogos que já terminaram (com winner) - jogos ativos são recriados
+            // Só carrega jogos que já terminaram 
             games = savedGames.filter(g => g.winner);
             console.log(`[LOAD] Carregados ${games.length} jogos terminados para rankings`);
         } else {
@@ -66,9 +62,9 @@ function saveData() {
 
 loadData();
 
-// --- FUNÇÕES AUXILIARES ---
+//FUNÇÕES AUXILIARES
 
-// Requisito: Hash e Cifras (MD5 via crypto)
+// Requisito: Hash e Cifras
 function getHash(value) {
     return crypto.createHash('md5').update(value).digest('hex');
 }
@@ -85,13 +81,13 @@ function getHash(value) {
  */
 function indexToCoords(index, cols) {
     if (index < cols) {
-        return { row: 3, col: index }; // P1 Start (0→8)
+        return { row: 3, col: index }; // P1 Start 
     } else if (index < cols * 2) {
-        return { row: 2, col: (cols - 1) - (index - cols) }; // (17→9)
+        return { row: 2, col: (cols - 1) - (index - cols) }; 
     } else if (index < cols * 3) {
-        return { row: 1, col: index - cols * 2 }; // (18→26)
+        return { row: 1, col: index - cols * 2 }; 
     } else {
-        return { row: 0, col: (cols - 1) - (index - cols * 3) }; // P2 Start (35→27)
+        return { row: 0, col: (cols - 1) - (index - cols * 3) }; // P2 Start 
     }
 }
 
@@ -100,10 +96,10 @@ function indexToCoords(index, cols) {
  * (Inversa de indexToCoords)
  */
 function coordsToIndex(r, c, cols) {
-    if (r === 3) return c;                              // Row 3: 0→8
-    if (r === 2) return cols + (cols - 1 - c);         // Row 2: 17→9
-    if (r === 1) return (2 * cols) + c;                // Row 1: 18→26
-    if (r === 0) return (3 * cols) + (cols - 1 - c);   // Row 0: 35→27
+    if (r === 3) return c;                              // Row 3 
+    if (r === 2) return cols + (cols - 1 - c);         // Row 2 
+    if (r === 1) return (2 * cols) + c;                // Row 1 
+    if (r === 0) return (3 * cols) + (cols - 1 - c);   // Row 0
     
     console.error(`[coordsToIndex] Linha inválida: ${r}`);
     return 0;
@@ -111,7 +107,6 @@ function coordsToIndex(r, c, cols) {
 
 /**
  * Converte tabuleiro 4xN do motor para array linear de peças
- * IMPORTANTE: Segue o padrão serpentine (não é row-major!)
  */
 function flattenBoard(engine, initialNick, playersData) {
     const board = engine.getBoard();
@@ -152,7 +147,7 @@ function resetGameTimer(game) {
     const timerId = setTimeout(() => {
         console.log(`[TIMEOUT] Jogo ${game.id} expirou`);
         
-        // Conceder vitória ao adversário (quem NÃO tem a vez)
+        // Conceder vitória ao adversário
         const playerNicks = Object.keys(game.playersData);
         const opponent = playerNicks.find(nick => nick !== game.turn);
         
@@ -190,17 +185,17 @@ function getBody(req) {
 function validateUser(nick, password) {
     const user = users.find(u => u.nick === nick);
     if (!user) return false;
-    // Requisito: Comparar hash da password, nunca em texto limpo
+    //Comparar hash da password
     return user.passHash === getHash(password);
 }
 
-// Requisito: Enviar updates via Server-Sent Events (SSE)
+// Enviar updates via Server-Sent Events (SSE)
 function notifyClients(game, lastCell = undefined) {
     if (!game.responses || !game.engine) return;
     
     const engine = game.engine;
     const playerNicks = Object.keys(game.playersData);
-    const initialNick = playerNicks[0]; // Primeiro jogador (Yellow)
+    const initialNick = playerNicks[0]; // Primeiro jogador
     
     // Construir array de peças compatível com cliente
     const pieces = flattenBoard(engine, initialNick, game.playersData);
@@ -217,7 +212,7 @@ function notifyClients(game, lastCell = undefined) {
         const selectedIdx = coordsToIndex(selected.row, selected.col, engine.getColumns());
         selectedCells.push(selectedIdx);
         
-        // 🔥 USA cache em vez de recalcular (evita reselecionar)
+        //Usa cache em vez de recalcular 
         const validMoves = game.validMovesCache || [];
         validMoves.forEach(move => {
             const idx = coordsToIndex(move.row, move.col, engine.getColumns());
@@ -258,19 +253,19 @@ function notifyClients(game, lastCell = undefined) {
 }
 
 
-// --- SERVIDOR HTTP ---
+//SERVIDOR HTTP
 const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
     const pathname = parsedUrl.pathname;
 
-    // CORS Preflight (Necessário pois frontend e backend estão em portas diferentes)
+    // CORS Preflight
     if (req.method === 'OPTIONS') {
         res.writeHead(204, headers);
         res.end();
         return;
     }
 
-    // --- ROTA SSE: /update (GET) ---
+    //ROTA SSE: /update (GET) 
     if (pathname === '/update' && req.method === 'GET') {
         const nick = parsedUrl.query.nick;
         const gameId = parsedUrl.query.game;
@@ -282,7 +277,7 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        // ✅ VALIDAR: Nick pertence ao jogo
+        // Nick pertence ao jogo
         if (!game.playersData[nick]) {
             res.writeHead(403, headers);
             res.end(JSON.stringify({ error: "Não pertences a este jogo" }));
@@ -306,7 +301,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // --- ROTAS DE API (POST) ---
+    // ROTAS DE API (POST)
     if (req.method === 'POST') {
         let body = await getBody(req);
         let response = {};
@@ -320,7 +315,7 @@ const server = http.createServer(async (req, res) => {
             }
 
             switch (pathname) {
-                // === REGISTER ===
+                //REGISTER
                 case '/register':
                     if (!body.nick || !body.password) throw { status: 400, msg: "Argumentos inválidos" };
                     const existing = users.find(u => u.nick === body.nick);
@@ -332,14 +327,14 @@ const server = http.createServer(async (req, res) => {
                     }
                     break;
 
-                // === RANKING ===
+                // RANKING
                 case '/ranking':
-                    // Validação 1: group undefined
+                    // group indefinido
                     if (body.group === undefined) {
                         throw { status: 400, msg: "Undefined group" };
                     }
                     
-                    // Validação 2: size undefined ou inválido
+                    // size indefinido ou inválido
                     if (body.size === undefined) {
                         throw { status: 400, msg: "Invalid size 'undefined'" };
                     }
@@ -347,17 +342,17 @@ const server = http.createServer(async (req, res) => {
                     const rankGroup = parseInt(body.group);
                     const rankSize = parseInt(body.size);
                     
-                    // Validação 3: group não numérico
+                    // group não numérico
                     if (isNaN(rankGroup)) {
                         throw { status: 400, msg: `Invalid group '${body.group}'` };
                     }
                     
-                    // Validação 4: size não inteiro ou inválido
+                    // size não inteiro ou inválido
                     if (isNaN(rankSize) || rankSize < 3 || rankSize > 15 || rankSize % 2 === 0) {
                         throw { status: 400, msg: `Invalid size '${body.size}'` };
                     }
                     
-                    // Calcula stats por grupo E tamanho filtrando games
+                    // Calcula stats por grupo E tamanho filtrando jogos
                     const groupGames = games.filter(g => g.group == rankGroup && g.size == rankSize && g.winner);
                     const groupStats = {};
                     
@@ -378,11 +373,11 @@ const server = http.createServer(async (req, res) => {
                     };
                     break;
 
-                // === JOIN ===
+                //JOIN
                 case '/join':
                     if (!body.group || !body.size) throw { status: 400, msg: "Argumentos em falta" };
                     
-                    // Requisito: Verificar tipos e intervalos
+                    // Verificar tipos e intervalos
                     const size = parseInt(body.size);
                     const group = parseInt(body.group);
                     
@@ -398,10 +393,10 @@ const server = http.createServer(async (req, res) => {
                         if (!game.playersData[body.nick]) {
                            game.playersData[body.nick] = "blue"; 
                            
-                           // ✅ CRIAR MOTOR AQUI
+                           // cria motor
                            game.engine = createTabEngine({ columns: size });
                            
-                           // ✅ Definir mapeamento de cores
+                           // Definir mapeamento de cores
                            const p1Nick = Object.keys(game.playersData)[0];
                            const p2Nick = body.nick;
                            game.colorMap = {
@@ -431,7 +426,7 @@ const server = http.createServer(async (req, res) => {
                     response = { game: game.id };
                     break;
 
-                // === LEAVE ===
+
                 case '/leave':
                     if (!body.game) throw { status: 400, msg: "Game ID em falta" };
                     const gLeave = games.find(g => g.id === body.game);
@@ -449,7 +444,7 @@ const server = http.createServer(async (req, res) => {
                     const lUser = users.find(u => u.nick === body.nick);
                     if (lUser) lUser.games++;
 
-                    // ✅ Limpar gameTimers
+                    // Limpar gameTimers
                     if (gameTimers.has(gLeave.id)) {
                         clearTimeout(gameTimers.get(gLeave.id));
                         gameTimers.delete(gLeave.id);
@@ -459,7 +454,7 @@ const server = http.createServer(async (req, res) => {
                     saveData();
                     break;
 
-                // === NOTIFY (JOGADA) ===
+
                 case '/notify':
                     if (body.cell === undefined) throw { status: 400, msg: "Cell em falta" };
                     const gNotify = games.find(g => g.id === body.game);
@@ -470,7 +465,7 @@ const server = http.createServer(async (req, res) => {
                     const cellIndex = parseInt(body.cell);
                     if (isNaN(cellIndex) || cellIndex < 0) throw { status: 400, msg: "Célula inválida" };
 
-                    // ✅ Converter índice para coordenadas
+                    // Converter índice para coordenadas
                     const coords = indexToCoords(cellIndex, parseInt(gNotify.size));
                     const { row, col } = coords;
                     
@@ -479,21 +474,21 @@ const server = http.createServer(async (req, res) => {
                         const selected = engine.getSelected?.(); // Verifica se há peça selecionada
                         
                         if (!selected) {
-                            // ========== PASSO 1: SELECIONAR PEÇA ==========
+
                             const moves = engine.selectPiece(row, col);
                             
                             if (moves.length === 0) {
                                 throw new Error("Peça sem movimentos válidos");
                             }
                             
-                            // 🔥 GUARDA destinos no cache
+                            // GUARDA destinos no cache
                             gNotify.validMovesCache = moves;
                             
-                            // ✅ Peça selecionada com sucesso
+                            // Peça selecionada com sucesso
                             notifyClients(gNotify, cellIndex);
                             
                         } else {
-                            // ========== PASSO 2: MOVER OU DESELECIONAR ==========
+
                             if (selected.row === row && selected.col === col) {
                                 // Toggle: clicar na mesma peça cancela seleção
                                 engine.deselect();
@@ -502,10 +497,10 @@ const server = http.createServer(async (req, res) => {
                             } else {
                                 const result = engine.moveSelectedTo(row, col);
                                 
-                                // 🔥 LIMPA cache
+                                //  LIMPA cache
                                 delete gNotify.validMovesCache;
                                 
-                                // ✅ Gerir turno
+                                //  Gerir turno
                                 if (!result.extraTurn) {
                                     const playerNicks = Object.keys(gNotify.playersData);
                                     const p1 = playerNicks[0];
@@ -513,10 +508,10 @@ const server = http.createServer(async (req, res) => {
                                     gNotify.turn = (gNotify.turn === p1) ? p2 : p1;
                                 }
                                 
-                                // ✅ Reset timer de inatividade
+                                //  Reset timer de inatividade
                                 resetGameTimer(gNotify);
                                 
-                                // ✅ Verificar vitória
+                                //  Verificar vitória
                                 const winnerCode = engine.checkWinner();
                                 if (winnerCode) {
                                     const p1 = Object.keys(gNotify.playersData)[0];
@@ -538,7 +533,7 @@ const server = http.createServer(async (req, res) => {
                                     }
                                 }
                                 
-                                // ✅ Notificar clientes
+                                //  Notificar clientes
                                 notifyClients(gNotify, cellIndex);
                             }
                         }
@@ -548,34 +543,34 @@ const server = http.createServer(async (req, res) => {
                     }
                     break;
                 
-                // === ROLL (DADO) ===
+
                 case '/roll':
                     const gRoll = games.find(g => g.id === body.game);
                     if (!gRoll || !gRoll.engine) throw { status: 400, msg: "Jogo não ativo" };
                     if (gRoll.turn !== body.nick) throw { status: 400, msg: "Não é a tua vez" };
                     
-                    // ✅ Validar se já tem dado
+                    // Validar se já tem dado
                     if (gRoll.engine.getDice() !== null) {
                         throw { status: 400, msg: "Já lançaste o dado" };
                     }
 
-                    // ✅ Lançar dado no motor
+                    // Lançar dado no motor
                     gRoll.engine.rollDice();
                     
-                    // ✅ Reset timer de inatividade
+                    // Reset timer de inatividade
                     resetGameTimer(gRoll);
                     
                     notifyClients(gRoll);
                     break;
 
-                // === PASS (PASSAR VEZ) ===
+
                 case '/pass':
                     const gPass = games.find(g => g.id === body.game);
                     if (!gPass || !gPass.engine) throw { status: 400, msg: "Jogo não ativo" };
                     if (gPass.turn !== body.nick) throw { status: 400, msg: "Não é a tua vez" };
 
                     try {
-                        // ✅ Validar se pode passar
+                        // Validar se pode passar
                         if (gPass.engine.getDice() === null) {
                             throw new Error("Tem de lançar o dado antes de passar");
                         }
@@ -584,16 +579,16 @@ const server = http.createServer(async (req, res) => {
                             throw new Error("Ainda há jogadas possíveis");
                         }
                         
-                        // ✅ Passar turno no motor
+                        // Passar turno no motor
                         gPass.engine.passTurn();
                         
-                        // ✅ Trocar turno (passTurn() já trata jogadas extra internamente)
+                        // Trocar turno (passTurn() já trata jogadas extra internamente)
                         const playerNicks = Object.keys(gPass.playersData);
                         const p1 = playerNicks[0];
                         const p2 = playerNicks[1];
                         gPass.turn = gPass.engine.getCurrentPlayer() === 1 ? p1 : p2;
                         
-                        // ✅ Reset timer
+                        // Reset timer
                         resetGameTimer(gPass);
                         
                         notifyClients(gPass);
@@ -625,7 +620,7 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-// Limpeza periódica de jogos zombie (sem motor há mais de 5min)
+
 setInterval(() => {
     const now = Date.now();
     const before = games.length;
@@ -638,7 +633,7 @@ setInterval(() => {
         return true;
     });
     
-    // 🔥 Persiste alterações se jogos foram removidos
+    // Persiste alterações se jogos foram removidos
     if (games.length < before) {
         saveData();
     }

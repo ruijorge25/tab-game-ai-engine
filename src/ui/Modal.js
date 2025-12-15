@@ -4,9 +4,7 @@ import { network } from '../core/network.js';
 let activeModal = null;
 let activeEscHandler = null;
 
-/**
- * Cria e exibe um modal genérico
- */
+
 export function showModal({ title, content, buttons = [], onClose, className = '' }) {
   if (activeModal) closeModal();
 
@@ -162,7 +160,7 @@ export function showVictoryModal({ winner, stats = {}, onPlayAgain, onGoToMenu }
         text: 'Jogar Novamente', 
         className: 'btn btn-primary', 
         onClick: (e) => { 
-            if(e && e.preventDefault) e.preventDefault(); // [CORREÇÃO] Evita refresh
+            if(e && e.preventDefault) e.preventDefault(); 
             if (onPlayAgain) onPlayAgain(); 
         }
       },
@@ -170,23 +168,21 @@ export function showVictoryModal({ winner, stats = {}, onPlayAgain, onGoToMenu }
         text: 'Menu', 
         className: 'btn btn-secondary', 
         onClick: (e) => { 
-            if(e && e.preventDefault) e.preventDefault(); // [CORREÇÃO] Evita refresh
+            if(e && e.preventDefault) e.preventDefault(); 
             if (onGoToMenu) onGoToMenu(); 
         }
       }
     ],
     onClose: () => {
       document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
-      // [CORREÇÃO] Removemos 'if (onGoToMenu) onGoToMenu();' daqui.
-      // Se estivesse aqui, ao fechar o modal (que acontece automaticamente ao clicar nos botões),
-      // forçaria sempre a ida para o menu, estragando o "Jogar Novamente".
+
     }
   });
   
   setTimeout(() => animateStats(), 300);
 }
 
-/* Helpers Visuais */
+
 function animateStats() {
   const statElements = document.querySelectorAll('.animated-stat');
   statElements.forEach((el, index) => {
@@ -222,11 +218,7 @@ function createConfetti(count = 150) {
   }
 }
 
-/* =================================================================
-   FUNCIONALIDADES RESTAURADAS: LEADERBOARD LOCAL + ONLINE
-   ================================================================= */
 
-// Helper: formata data para display
 function formatDate(isoString) {
   const date = new Date(isoString);
   const day = String(date.getDate()).padStart(2, '0');
@@ -237,7 +229,6 @@ function formatDate(isoString) {
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-/* Modal Inteligente: Mostra Local por defeito, com opção para Online */
 export function showLeaderboardModal() {
   // 1. Gera o HTML Local (Mantém-se igual)
   const stats = getPlayerStats();
@@ -463,11 +454,7 @@ export function showLeaderboardModal() {
   }
 }
 
-/* =================================================================
-   FUNÇÕES ORIGINAIS RESTAURADAS (LOCAL)
-   ================================================================= */
 
-/* Obtém estatísticas do jogador do localStorage */
 function getPlayerStats() {
   const username = localStorage.getItem('tab_username') || null;
   const gamesData = JSON.parse(localStorage.getItem('tab_games') || '[]');
@@ -513,11 +500,7 @@ export function saveGameResult({ won, captures, moves }) {
   localStorage.setItem('tab_games', JSON.stringify(gamesData));
 }
 
-/* =================================================================
-   ESTATÍSTICAS ONLINE (WebStorage)
-   ================================================================= */
 
-/* Obtém estatísticas de jogos online do WebStorage */
 function getOnlineStats() {
   const username = localStorage.getItem('tab_username') || null;
   const onlineGames = JSON.parse(localStorage.getItem('tab_online_games') || '[]');

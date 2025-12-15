@@ -3,21 +3,19 @@ import { createTabEngine } from './engine.tab.js';
 
 export function createOnlineEngine() {
   let serverState = null;
-  let cachedPieces = null; // CACHE: Guarda último estado válido das peças
-  let cachedPlayers = null; // CACHE: Guarda info dos jogadores
-  let cachedInitial = null; // CACHE: Guarda quem é o jogador 'initial'
+  let cachedPieces = null; 
+  let cachedPlayers = null;
+  let cachedInitial = null; 
   let gameId = null;
   let myNick = null;
   let myPassword = null;
-  let boardSize = 9; // Tamanho padrão
-  let waitingForServer = false; // Indica se estamos aguardando resposta
+  let boardSize = 9; 
+  let waitingForServer = false; 
 
   // Instância do motor local para validação
   let localValidator = null;
   
-  // IMPORTANTE: Usamos 'initial' do servidor, NÃO cores!
-  // - Se EU sou 'initial': minhas peças ficam em baixo (linha 3), visão normal
-  // - Se EU NÃO sou 'initial': minhas peças DEVEM ficar em baixo, então ROTACIONO 180°
+
   
   return {
     init(gid, nick, pass, size = 9) {
@@ -34,12 +32,10 @@ export function createOnlineEngine() {
       serverState = data;
       waitingForServer = false; // Recebemos resposta do servidor
       
-      // Cacheia pieces, players e initial quando servidor as envia
       if (data.pieces) cachedPieces = data.pieces;
       if (data.players) cachedPlayers = data.players;
       if (data.initial) cachedInitial = data.initial;
 
-      // --- SINCRONIZA O VALIDADOR LOCAL (CORRIGIDO) ---
       if (cachedPieces && cachedPlayers && cachedInitial && localValidator) {
         const cols = this.getColumns();
         const logicalBoard = Array.from({ length: 4 }, () => Array(cols).fill(null));
@@ -50,7 +46,6 @@ export function createOnlineEngine() {
           
           const { row, col } = this.indexToCoords(index);
           
-          // 🔥 Determina dono baseado na COR da peça (não no índice)
           const initialColor = cachedPlayers[cachedInitial];
           const isInitialPlayer = (p.color === initialColor);
           const logicalPlayerID = isInitialPlayer ? 1 : 2;
@@ -76,12 +71,10 @@ export function createOnlineEngine() {
         // Dado
         const diceVal = data.dice ? data.dice.value : null;
 
-        // 🔥 CORREÇÃO: Injeta estado COMPLETO
         localValidator.overrideState(logicalBoard, logicalPieces, currentPlayerLogic, diceVal);
       }
     },
 
-    // --- GETTERS PARA A UI ---
 
     getBoard() {
       // Usa cache se servidor não enviar pieces neste update
@@ -106,19 +99,13 @@ export function createOnlineEngine() {
         // Transforma para coordenadas VISUAIS (minhas peças sempre em baixo)
         const visualPos = this.transformCoords(row, col);
         
-        // CORREÇÃO CRÍTICA AQUI:
-        // O GameView só deixa jogar se piece.player === 1.
-        // Então, independentemente de quem eu sou (Initial ou Opponent),
-        // as MINHAS peças têm de ter ID 1 para a UI.
-        
+
         const pieceOwner = this.getPieceOwner(index); // 'initial' ou 'opponent'
         let visualPlayerID;
 
         if (amIInitial) {
-            // Eu sou Initial. Initial=1 (Eu), Opponent=2 (Inimigo)
             visualPlayerID = (pieceOwner === 'initial') ? 1 : 2;
         } else {
-            // Eu sou Opponent. Opponent=1 (Eu), Initial=2 (Inimigo)
             visualPlayerID = (pieceOwner === 'opponent') ? 1 : 2;
         }
 
@@ -138,7 +125,6 @@ export function createOnlineEngine() {
     transformCoords(r, c) {
       const cols = this.getColumns();
       
-      // 🔥 VALIDAÇÃO CRÍTICA
       if (r < 0 || r > 3 || c < 0 || c >= cols) {
         console.error(`[transformCoords] Coords inválidas: r=${r}, c=${c}, cols=${cols}`);
         return { row: 0, col: 0 }; // Fallback seguro
@@ -162,7 +148,7 @@ export function createOnlineEngine() {
         const newR = 3 - r;
         const newC = (cols - 1) - c;
         
-        // 🔥 VALIDA RESULTADO
+        // VALIDA RESULTADO
         if (newR < 0 || newR > 3 || newC < 0 || newC >= cols) {
           console.error(`[transformCoords] Resultado inválido: (${r},${c}) → (${newR},${newC})`);
           return { row: r, col: c }; // Fallback: retorna original
@@ -172,7 +158,6 @@ export function createOnlineEngine() {
       }
     },
 
-    // Helper: Determina dono da peça baseado na cor (CORRIGIDO)
     getPieceOwner(index) {
       const piece = cachedPieces?.[index];
       if (!piece) return null;
@@ -180,7 +165,7 @@ export function createOnlineEngine() {
       const initialColor = cachedPlayers?.[cachedInitial];
       if (!initialColor) return null;
       
-      // 🔥 Compara pela COR, não pelo índice
+      // Compara pela COR, não pelo índice
       return (piece.color === initialColor) ? 'initial' : 'opponent';
     },
 
@@ -195,14 +180,12 @@ export function createOnlineEngine() {
     getHighlights() {
       if (!serverState || !serverState.selected) return [];
       
-      // 🔥 CORREÇÃO: Converte índices do servidor para coordenadas visuais
       return serverState.selected.map(idx => {
         const { row, col } = this.indexToCoords(idx);
         return this.transformCoords(row, col);
       });
     },
 
-    // 🔥 NOVO: Método único que o GameView chama ao clicar
     async interaction(r, c) {
       // Converte coordenadas visuais para lógicas
       const logicalPos = this.transformCoords(r, c);
@@ -246,7 +229,7 @@ export function createOnlineEngine() {
       const myPiecesInMotion = pieces.filter(p => p && p.color === myColor && p.inMotion === true).length;
       return myPiecesInMotion > 0;
     },
-    // 🔥 Verifica se há movimentos disponíveis (CORRIGIDO)
+    // Verifica se há movimentos disponíveis 
     hasAnyValidMove() {
       if (!localValidator) return true;
       
@@ -263,11 +246,9 @@ export function createOnlineEngine() {
       return false;
     },
     
-    // USANDO O VALIDADOR LOCAL (CORRIGIDO)
     getValidMoves(r, c) {
       if (!localValidator) return [];
 
-      // 🔥 VERIFICAÇÃO CRÍTICA: Só permite mover se é a nossa vez E temos dado
       const isMyTurn = (serverState?.turn === myNick);
       const hasDice = serverState?.dice?.value != null;
       
@@ -293,7 +274,7 @@ export function createOnlineEngine() {
       });
     },
     
-    // Suporte para hints/AI (opcional, mas bom para consistência)
+    // Suporte para dicas
     getHypotheticalMoves(r, c, dice, player) {
        if (!localValidator) return [];
        const logicalPos = this.transformCoords(r, c);
@@ -301,7 +282,7 @@ export function createOnlineEngine() {
        return moves.map(m => this.transformCoords(m.row, m.col));
     },
 
-    // 🔥 NOVO: Contagem de peças para verificação de vitória
+    //Contagem de peças para verificação de vitória
     getPieceCounts() {
       if (!cachedPieces) return { player1: 0, player2: 0 };
       
@@ -333,7 +314,7 @@ export function createOnlineEngine() {
       return waitingForServer;
     },
 
-    // --- AÇÕES ---
+    //AÇÕES
 
     async rollDice() {
       waitingForServer = true;
@@ -342,7 +323,7 @@ export function createOnlineEngine() {
       } finally {}
     },
 
-    // Método para enviar APENAS seleção de peça (raramente usado)
+    // Método para enviar seleção de peça
     async selectPiece(r, c) {
       const logicalPos = this.transformCoords(r, c);
       const idx = this.coordsToIndex(logicalPos.row, logicalPos.col);
@@ -358,7 +339,7 @@ export function createOnlineEngine() {
       }
     },
 
-    // Método principal: Move peça de origem para destino
+    //Move peça de origem para destino
     async movePiece(fromR, fromC, toR, toC) {
       console.log('=== ENVIANDO JOGADA COMPLETA ===');
       console.log('Estado do Servidor:', {
@@ -380,7 +361,6 @@ export function createOnlineEngine() {
       
       waitingForServer = true;
       try {
-        // Envia em 2 etapas: primeiro a peça, depois o destino
         await network.notify(myNick, myPassword, gameId, idxTo, idxFrom);
       } catch (err) {
         waitingForServer = false;
@@ -389,7 +369,6 @@ export function createOnlineEngine() {
       }
     },
 
-    // Compatibilidade com código antigo (delega para movePiece)
     async moveSelectedTo(r, c) {
       console.warn('[Online] moveSelectedTo está deprecated, use movePiece');
       throw new Error('Use movePiece(fromR, fromC, toR, toC) em vez de moveSelectedTo');
@@ -405,20 +384,20 @@ export function createOnlineEngine() {
       }
     },
 
-    // --- UTILITÁRIOS DE COORDENADAS (LÓGICAS) ---
+    //LÓGICAS DE COORDENADAS
     // Estas funções lidam SEMPRE com a lógica padrão (P1=Row3, P2=Row0)
     
     indexToCoords(index) {
       const cols = this.getColumns();
       let r, c;
       if (index < cols) {
-        r = 3; c = index; // P1 Start (Esq->Dir)
+        r = 3; c = index; // P1 Start
       } else if (index < cols * 2) {
-        r = 2; c = (cols - 1) - (index - cols); // Dir->Esq
+        r = 2; c = (cols - 1) - (index - cols); 
       } else if (index < cols * 3) {
-        r = 1; c = index - cols * 2; // Esq->Dir
+        r = 1; c = index - cols * 2; 
       } else {
-        r = 0; c = (cols - 1) - (index - cols * 3); // P2 Start (Dir->Esq)
+        r = 0; c = (cols - 1) - (index - cols * 3); // P2 Start 
       }
       return { row: r, col: c };
     },
@@ -426,7 +405,7 @@ export function createOnlineEngine() {
     coordsToIndex(r, c) {
       const cols = this.getColumns();
       
-      // 🔍 Adiciona validação:
+      //Adiciona validação
       if (r < 0 || r > 3 || c < 0 || c >= cols) {
         console.error(`[coordsToIndex] Coords inválidas: r=${r}, c=${c}, cols=${cols}`);
         return 0; // Fallback seguro
@@ -441,7 +420,7 @@ export function createOnlineEngine() {
       return 0;
     },
     
-    // Expõe o validador local para uso com AI (dicas)
+    // Expõe o validador local para uso com dicas
     getLocalValidator() {
       return localValidator;
     }

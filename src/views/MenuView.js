@@ -12,7 +12,6 @@ export function renderMenuView(container) {
   root.className = 'view page-enter';
 
   // Verifica se já temos credenciais guardadas na sessão
-  // (Nota: state.session deve ser inicializado no main.js/state.js a ler do localStorage)
   const { nick, password } = state.session || {};
   const isLoggedIn = !!(nick && password);
 
@@ -240,7 +239,6 @@ export function renderMenuView(container) {
   };
 }
 
-// ========== MODAL DE SELEÇÃO DE MODO ==========
 function showGameModeModal(container, isLoggedIn, nick, password) {
   const modalContent = document.createElement('div');
   modalContent.className = 'game-mode-selector';
@@ -398,7 +396,6 @@ function showGameModeModal(container, isLoggedIn, nick, password) {
     };
   }
   
-  // === MODO ONLINE - PROCURAR JOGO ===
   const btnStartOnline = document.getElementById('btn-start-online');
   if (btnStartOnline) {
     btnStartOnline.onclick = async () => {
@@ -406,9 +403,7 @@ function showGameModeModal(container, isLoggedIn, nick, password) {
       const originalGroup = state.session.group || 34;
       const sizeVal = state.config.columns || 9;
       
-      // [CORREÇÃO] 
-      // O servidor RIP já filtra por Size no endpoint /ranking.
-      // Não devemos alterar o número do grupo (ex: 3409), senão o ranking do grupo 34 fica vazio.
+
 
       try {
         btnStartOnline.disabled = true;

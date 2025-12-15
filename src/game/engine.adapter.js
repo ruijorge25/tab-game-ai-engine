@@ -1,4 +1,4 @@
-// Adapter mínimo que “normaliza” a API para a UI atual.
+// Adapter que normaliza a API para a UI atual
 
 export function createEngineAdapter(coreEngine) {
   return {

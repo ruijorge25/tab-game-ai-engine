@@ -28,7 +28,7 @@ export function renderGameView(container) {
   let isOnline = false;
   let unsubscribeSSE = null;
 
-  // 🔥 Inicializa flag
+  //  Inicializa flag
   window.autoPassInProgress = false;
 
   // 1. DECISÃO DE MOTOR
@@ -50,7 +50,7 @@ export function renderGameView(container) {
   const root = document.createElement('div');
   root.className = 'game-scene';
 
-  // 2. HTML (Botão Passar REMOVIDO)
+  // 2. HTML 
   root.innerHTML = `
     <header class="hud">
       <div class="logo">Tâb</div>
@@ -128,7 +128,7 @@ export function renderGameView(container) {
 
   const boardPane = root.querySelector('.board-pane');
   const diceHolder = root.querySelector('#dice-holder');
-  // const btnPass = root.querySelector('#btn-pass'); // REMOVIDO
+
 
   let diceBtn; 
   let humanMoves = 0;
@@ -212,7 +212,6 @@ export function renderGameView(container) {
     }
     
     if (isOnline) {
-      // 🔥 SIMPLIFICADO: Apenas chama interaction e aguarda SSE
       const currentTurn = engine.getCurrentPlayer();
       if (currentTurn !== 1) {
         console.log('[GameView] Não é a minha vez');
@@ -224,7 +223,6 @@ export function renderGameView(container) {
       
       try {
         await engine.interaction(r, c);
-        // SSE vai atualizar o tabuleiro automaticamente
       } catch (err) {
         console.error('[GameView] Erro:', err);
         toast(err.message, 'error');
@@ -247,7 +245,6 @@ export function renderGameView(container) {
   const dice = Dice(async () => {
     try {
       if (isOnline) {
-        // 🔥 CORREÇÃO: Verifica se há 2 jogadores antes de permitir rolar
         const serverState = engine.getState?.();
         const players = serverState?.players;
         if (!players || Object.keys(players).length < 2) {
@@ -255,7 +252,6 @@ export function renderGameView(container) {
           return;
         }
         
-        // [CITE: src/views/GameView.js] CORREÇÃO: Detetar se estamos presos com jogada extra
         const diceObj = (typeof engine.getDiceObj === 'function') ? engine.getDiceObj() : null;
         const keepPlaying = diceObj?.keepPlaying;
         const hasDice = !!diceObj;
@@ -269,8 +265,7 @@ export function renderGameView(container) {
         // Se temos dado extra (1, 4, 6) MAS não temos movimentos:
         if (hasDice && keepPlaying && !hasMoves) {
             console.log('[GameView] Preso com jogada extra. A forçar novo lançamento (rollDice) em vez de passar.');
-            // CORREÇÃO: Usamos rollDice() em vez de passTurn().
-            // O servidor sabe que não podemos mover e aceitará o novo lançamento.
+
             await engine.rollDice();
             return null;
         }
@@ -332,7 +327,7 @@ export function renderGameView(container) {
     
     board.render();
     root.classList.remove('waiting-server');
-    isProcessingMove = false; // 🔥 Liberta o bloqueio
+    isProcessingMove = false; // Liberta o bloqueio
     
     const diceObj = engine.getDiceObj();
     const newDiceValue = diceObj ? diceObj.value : null;
@@ -352,7 +347,7 @@ export function renderGameView(container) {
     
     dice.dataset.lastValue = newDiceValue ?? '';
 
-    // 🔥 HIGHLIGHTS baseados no step do servidor (só se for minha vez)
+    // HIGHLIGHTS baseados no step do servidor (só se for minha vez)
     const isMyTurn = (data.turn === state.session.nick);
     if (isMyTurn && data.step === 'to' && data.selected && data.selected.length > 0) {
       // Servidor enviou destinos possíveis
@@ -374,7 +369,7 @@ export function renderGameView(container) {
     if (data.winner) {
       const isMe = (data.winner === state.session.nick);
       
-      // 🔥 Salva resultado online no WebStorage
+      // Salva resultado online no WebStorage
       const opponent = Object.keys(data.players || {}).find(nick => nick !== state.session.nick) 
                       || root.querySelector('#player-opponent .player-label')?.textContent 
                       || 'Adversário';
@@ -388,8 +383,7 @@ export function renderGameView(container) {
       return;
     }
 
-    // 🔥 CORREÇÃO 2: Verifica vitória por contagem de peças
-    // (Backup caso o servidor não envie data.winner)
+
     const pieceCounts = engine.getPieceCounts ? engine.getPieceCounts() : null;
     if (pieceCounts) {
       console.log('[GameView] Contagem de peças:', pieceCounts);
@@ -426,7 +420,6 @@ export function renderGameView(container) {
     const diceValue = data.dice?.value;
     const keepPlaying = data.dice?.keepPlaying;
 
-    // 🔥 CORREÇÃO: Verifica se há movimentos apenas quando necessário
     let hasMoves = true;
     if (isMyTurn && data.dice && typeof engine.hasAnyValidMove === 'function') {
       hasMoves = !!engine.hasAnyValidMove();
@@ -447,7 +440,7 @@ export function renderGameView(container) {
       else diceBtn.classList.remove('dice-ready');
     }
 
-    // 🔥 Auto-Pass: Apenas se servidor mandar mustPass
+    // Auto-Pass: Apenas se servidor mandar mustPass
     if (data.mustPass && data.mustPass === state.session.nick && !window.autoPassInProgress) {
       window.autoPassInProgress = true;
       toast('Sem jogadas disponíveis. A passar a vez...', 'info');
@@ -561,7 +554,6 @@ export function renderGameView(container) {
   function localCheckAutoPass(player) {
     if (engine.getCurrentPlayer() === player && engine.getDice() !== null && engine.canPass()) {
       
-      // ALTERADO: Define a mensagem personalizada para o jogador
       const msg = player === 1 
         ? 'Sem jogadas disponiveis. A passar...' 
         : 'Computador sem jogadas. A passar...';
@@ -789,8 +781,7 @@ export function renderGameView(container) {
     // Se for local, guarda logo o resultado
     if (!isOnline) saveGameResult(stats);
 
-    // [CORREÇÃO] Se for online, navega IMEDIATAMENTE para o menu.
-    // Isto evita que o jogador fique preso no tabuleiro "congelado" se fechar o modal.
+
     if (isOnline) {
       state.session.gameId = null;
       navigateTo('menu');
@@ -812,7 +803,6 @@ export function renderGameView(container) {
                  unsubscribeSSE = null; // A conexão já foi fechada ao sair da view, limpamos a ref
                }
 
-               // [CORREÇÃO] Usamos document.body porque a 'root' do jogo já foi removida do DOM
                document.body.classList.add('waiting-server'); 
                toast('A procurar novo adversário...', 'info');
 
@@ -843,7 +833,6 @@ export function renderGameView(container) {
              }
         },
 
-        // --- SAIR PARA O MENU ---
         onGoToMenu: () => {
             closeModal(); 
             // Se for local, navega agora. 
@@ -866,7 +855,7 @@ export function renderGameView(container) {
       onServerUpdate,
       (err) => { 
           toast(err, 'error');
-          // ✅ Redirecionar para menu após erro crítico
+          // Redirecionar para menu após erro crítico
           setTimeout(() => {
               state.session.gameId = null;
               navigateTo('menu');

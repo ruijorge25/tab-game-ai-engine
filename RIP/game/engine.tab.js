@@ -1,15 +1,14 @@
-// Regras completas do Tâb — engine “puro” (sem UI)
-// VERSÃO CORRIGIDA PARA O SERVIDOR RIP
+// Regras completas do Tâb 
 
 export function createTabEngine(opts = {}) {
   const columns = clampOdd(opts.columns ?? 9, 7, 15);
 
-  // ------- Estado -------
+  //Estado 
   let board = Array.from({ length: 4 }, (_, r) =>
     Array.from({ length: columns }, (_, c) => null)
   );
 
-  let pieces = { 1: [], 2: [] }; // 1 = vermelho, 2 = azul
+  let pieces = { 1: [], 2: [] }; 
 
   // coloca peças
   for (let c = 0; c < columns; c++) {
@@ -21,9 +20,9 @@ export function createTabEngine(opts = {}) {
 
   let currentPlayer = 1; // vermelho começa
   let dice = null;
-  let selected = null; // Guarda a peça selecionada (objeto)
+  let selected = null; // Guarda a peça selecionada
 
-  // ------- Helpers -------
+  //Helpers
   function clampOdd(n, min, max) {
     const nn = Math.max(min, Math.min(max, n | 0));
     return nn % 2 === 0 ? nn + 1 : nn;
@@ -47,19 +46,18 @@ export function createTabEngine(opts = {}) {
     return pieces[player].some(p => p.row === r0);
   }
 
-  // -------- Dado de paus --------
+  //Dado de paus 
   function rollDice() {
-    // Probabilidades aproximadas do jogo real (4 paus)
+    // Probabilidades aproximadas do jogo real
     const r = Math.random();
     let val = (r < 0.0625) ? 6 : (r < 0.3125) ? 1 : (r < 0.6875) ? 2 : (r < 0.9375) ? 3 : 4;
 
-    // CORREÇÃO: Não fazemos recursão automática.
-    // O servidor retorna o valor (ex: 6) e a flag 'keepPlaying' informa o cliente que pode rolar de novo.
+    // O servidor retorna o valor e a flag 'keepPlaying' informa o cliente que pode rolar de novo.
     dice = val;
     return dice;
   }
 
-  // Movimentação (regra oficial) 
+  // Movimentação
   function getValidMovesFrom(piece, moves) {
     if (!moves || moves <= 0) return [];
     const player = piece.player;
@@ -67,7 +65,7 @@ export function createTabEngine(opts = {}) {
     const initialRow = initialRowOf(player);
     const lastRow = lastRowOf(player);
 
-    // Regra: Para sair da linha inicial, é preciso tirar um Tâb (1)
+    // Regra: Para sair da linha inicial, é preciso tirar um Tâb 
     if (!piece.hasMoved && moves !== 1) {
         return [];
     }
@@ -210,8 +208,6 @@ export function createTabEngine(opts = {}) {
       const p = cell(r, c);
       if (!p || p.player !== currentPlayer) return [];
       
-      // NOTA: No motor puro, chamar getValidMoves define a seleção temporariamente
-      // mas para o servidor, vamos usar o selectPiece explicitamente no notify
       return getValidMovesFrom(p, dice);
     },
 
@@ -262,7 +258,7 @@ export function createTabEngine(opts = {}) {
       selected = null;
       dice = null;
 
-      // 🔥 Se tirou 1, 4 ou 6, mantém a vez mesmo sem movimentos (jogada extra)
+      //Se tirou 1, 4 ou 6, mantém a vez mesmo sem movimentos (jogada extra)
       if (!extraTurn) {
         currentPlayer = (currentPlayer === 1 ? 2 : 1);
       }

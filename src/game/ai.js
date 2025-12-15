@@ -40,14 +40,14 @@ export function findBestMove(level, engine) {
       const hardResult = findHardMove(engine, allMoves); // Isto agora retorna { move, score, reason }
       bestMove = hardResult.move;
       bestScore = hardResult.score;
-      // Ignoramos a 'reason' aqui, porque isto é a *jogada* da IA, não a dica
+      // Ignoramos a 'reason' aqui, porque isto é a jogada da IA, não a dica
       break;
     
     default:
       bestMove = findEasyMove(engine, allMoves);
   }
 
-  // --- DEBUG LOG FINAL ---
+  // DEBUG LOG FINAL
   if (bestMove) {
     // Nível 'easy' não terá pontuação, 'medium' e 'hard' terão
     const scoreStr = (bestScore > -Infinity) ? `com score ${bestScore.toFixed(2)}` : '';
@@ -77,7 +77,7 @@ function findMediumMove(engine, allMoves) {
     const { score: presentScore } = getPresentScore(move, engine, player, initialRow, lastRow);
     const finalScore = presentScore + (Math.random() * 2); // Fator Aleatório
 
-    // ---- DEBUG LOG (NÍVEL MÉDIO) ----
+    //DEBUG LOG (NÍVEL MÉDIO)
     console.log(
       `Jogada [${move.piece.row},${move.piece.col}]->[${move.target.row},${move.target.col}]: ` +
       `Base(${presentScore.toFixed(0)}) = ${finalScore.toFixed(2)}`
@@ -102,7 +102,7 @@ function findHardMove(engine, allMoves) {
   const lastRow = (player === 1) ? 0 : 3;
   const board = engine.getBoard();
 
-  // ---- LÓGICA DE ESTADO ----
+  // LÓGICA DE ESTADO 
   const pieceCounts = engine.getPieceCounts();
   const myCount = pieceCounts.player2;
   const oppCount = pieceCounts.player1;
