@@ -262,10 +262,10 @@ export function createTabEngine(opts = {}) {
       selected = null;
       dice = null;
 
-      // Se passou num 6 ou 1 ou 4, tecnicamente poderia jogar outra vez (mas não tem peças),
-      // então geralmente a vez passa para o outro, a menos que as regras digam o contrário.
-      // A implementação simplificada passa sempre se não puder jogar.
-      currentPlayer = (currentPlayer === 1 ? 2 : 1);
+      // 🔥 Se tirou 1, 4 ou 6, mantém a vez mesmo sem movimentos (jogada extra)
+      if (!extraTurn) {
+        currentPlayer = (currentPlayer === 1 ? 2 : 1);
+      }
     },
     
     canPass() {

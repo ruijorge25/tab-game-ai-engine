@@ -1,6 +1,6 @@
 // src/core/network.js
 
-// ✅ Fallback para desenvolvimento local
+// ✅ Fallback para servidor do professor (porta 8008)
 const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) 
   || 'http://twserver.alunos.dcc.fc.up.pt:8134';
 

@@ -328,31 +328,46 @@ const server = http.createServer(async (req, res) => {
 
                 // === RANKING ===
                 case '/ranking':
-                    // Requisito: Verificar argumentos requeridos (group, size)
-                    if (body.group === undefined || body.size === undefined) {
-                        throw { status: 400, msg: "Argumentos em falta: group e size" };
+                    // Validação 1: group undefined
+                    if (body.group === undefined) {
+                        throw { status: 400, msg: "Undefined group" };
+                    }
+                    
+                    // Validação 2: size undefined ou inválido
+                    if (body.size === undefined) {
+                        throw { status: 400, msg: "Invalid size 'undefined'" };
                     }
                     
                     const rankGroup = parseInt(body.group);
-                    if (isNaN(rankGroup)) throw { status: 400, msg: "Group deve ser numérico" };
+                    const rankSize = parseFloat(body.size);
                     
-                    // Calcula stats por grupo filtrando games
-                    const groupGames = games.filter(g => g.group === rankGroup);
+                    // Validação 3: group não numérico
+                    if (isNaN(rankGroup) || typeof body.group !== 'number') {
+                        throw { status: 400, msg: `Invalid group '${body.group}'` };
+                    }
+                    
+                    // Validação 4: size não inteiro ou inválido
+                    if (isNaN(rankSize) || !Number.isInteger(rankSize) || rankSize < 3 || rankSize > 15 || rankSize % 2 === 0) {
+                        throw { status: 400, msg: `Invalid size '${body.size}'` };
+                    }
+                    
+                    // Calcula stats por grupo E tamanho filtrando games
+                    const groupGames = games.filter(g => g.group === rankGroup && g.size == rankSize && g.winner);
                     const groupStats = {};
                     
                     groupGames.forEach(g => {
                         Object.keys(g.playersData).forEach(nick => {
-                            if (!groupStats[nick]) groupStats[nick] = { games: 0, wins: 0 };
+                            if (!groupStats[nick]) groupStats[nick] = { games: 0, victories: 0 };
                             groupStats[nick].games++;
-                            if (g.winner === nick) groupStats[nick].wins++;
+                            if (g.winner === nick) groupStats[nick].victories++;
                         });
                     });
                     
                     // Retorna top 10 vitórias no grupo
                     response = {
                         ranking: Object.keys(groupStats)
-                            .map(nick => ({ nick, ...groupStats[nick] }))
-                            .sort((a, b) => b.wins - a.wins)
+                            .map(nick => ({ nick, victories: groupStats[nick].victories, games: groupStats[nick].games }))
+                            .sort((a, b) => b.victories - a.victories)
                             .slice(0, 10)
                     };
                     break;
