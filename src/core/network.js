@@ -1,6 +1,5 @@
 // src/core/network.js
 
-// ✅ Fallback para servidor do professor (porta 8008)
 const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) 
   || 'http://twserver.alunos.dcc.fc.up.pt:8134';
 
@@ -36,12 +35,10 @@ export const network = {
   // --- AUTENTICAÇÃO E LOBBY ---
   
   async register(nick, password) {
-    // Exemplo: {"nick": "zp", "password": "secret"} -> {}
     return post('register', { nick, password });
   },
 
   async join(group, nick, password, size) {
-    // Exemplo: { ... } -> {"game": "fa93b4..."}
     return post('join', { group, nick, password, size });
   },
 
@@ -49,13 +46,11 @@ export const network = {
     return post('leave', { nick, password, game });
   },
 
-  // --- JOGO ---
 
   async roll(nick, password, game) {
     return post('roll', { nick, password, game });
   },
 
-  // 🔥 SIMPLIFICADO: Apenas 1 pedido, sem retry, sem delays
   async notify(nick, password, game, cell) {
     console.log(`[NETWORK] notify: cell=${cell}`);
     return post('notify', { nick, password, game, cell });
@@ -69,7 +64,7 @@ export const network = {
     return post('ranking', { group, size });
   },
 
-  // --- STREAM DE DADOS (SSE) ---
+
   
   // Inicia a escuta de eventos do servidor
   subscribe(game, nick, onMessage, onError) {
