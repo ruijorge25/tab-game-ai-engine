@@ -10,11 +10,16 @@ import { headers, sseHeaders } from './utils/headers.js';
 import { createTabEngine } from './game/engine.tab.js';
 
 // Porta definida pelo enunciado (81XX -> XX é o grupo)
-const PORT = 8134; 
+const PORT = process.env.PORT || 8134; 
+
+// Timeouts
+const GAME_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
+const LOBBY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos aguardando
 
 // --- ESTADO EM MEMÓRIA ---
 let users = [];
 let games = [];
+const gameTimers = new Map(); // Map<gameId, timeoutId>
 
 // --- PERSISTÊNCIA (Requisito: usar módulo fs) ---
 const USERS_FILE = './data/users.json';
@@ -26,16 +31,29 @@ if (!fs.existsSync('./data')) fs.mkdirSync('./data');
 function loadData() {
     try {
         if (fs.existsSync(USERS_FILE)) users = JSON.parse(fs.readFileSync(USERS_FILE));
-        // Jogos são reiniciados se o servidor for abaixo (simplificação aceite), 
-        // mas a persistência de users é mantida.
+        
+        // Não carrega jogos antigos - devem ser recriados
+        if (fs.existsSync(GAMES_FILE)) {
+            const savedGames = JSON.parse(fs.readFileSync(GAMES_FILE));
+            console.log(`[LOAD] Ignorando ${savedGames.length} jogos antigos`);
+        }
         games = []; 
     } catch (e) { console.error("Erro ao carregar dados:", e); }
 }
 
 function saveData() {
-    // Serialização em JSON (Requisito)
-    // Removemos engine e responses (não serializáveis) antes de guardar
-    const gamesToSave = games.map(({ engine, responses, ...rest }) => rest);
+    // Deep copy sem engine e responses
+    const gamesToSave = games.map(game => ({
+        id: game.id,
+        group: game.group,
+        size: game.size,
+        playersData: game.playersData,
+        turn: game.turn,
+        winner: game.winner,
+        colorMap: game.colorMap,
+        createdAt: game.createdAt
+    }));
+    
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
     fs.writeFileSync(GAMES_FILE, JSON.stringify(gamesToSave, null, 2));
 }
@@ -47,6 +65,109 @@ loadData();
 // Requisito: Hash e Cifras (MD5 via crypto)
 function getHash(value) {
     return crypto.createHash('md5').update(value).digest('hex');
+}
+
+/**
+ * Converte índice linear (0 a 4*cols-1) para coordenadas {row, col}
+ * 
+ * LAYOUT DO TABULEIRO (exemplo 9 cols):
+ * 
+ * Row 0 (P2 Start): [35 34 33 32 31 30 29 28 27] ← Direita para Esquerda
+ * Row 1:            [18 19 20 21 22 23 24 25 26] → Esquerda para Direita
+ * Row 2:            [17 16 15 14 13 12 11 10  9] ← Direita para Esquerda
+ * Row 3 (P1 Start): [ 0  1  2  3  4  5  6  7  8] → Esquerda para Direita
+ */
+function indexToCoords(index, cols) {
+    if (index < cols) {
+        return { row: 3, col: index }; // P1 Start (0→8)
+    } else if (index < cols * 2) {
+        return { row: 2, col: (cols - 1) - (index - cols) }; // (17→9)
+    } else if (index < cols * 3) {
+        return { row: 1, col: index - cols * 2 }; // (18→26)
+    } else {
+        return { row: 0, col: (cols - 1) - (index - cols * 3) }; // P2 Start (35→27)
+    }
+}
+
+/**
+ * Converte coordenadas {row, col} para índice linear
+ * (Inversa de indexToCoords)
+ */
+function coordsToIndex(r, c, cols) {
+    if (r === 3) return c;                              // Row 3: 0→8
+    if (r === 2) return cols + (cols - 1 - c);         // Row 2: 17→9
+    if (r === 1) return (2 * cols) + c;                // Row 1: 18→26
+    if (r === 0) return (3 * cols) + (cols - 1 - c);   // Row 0: 35→27
+    
+    console.error(`[coordsToIndex] Linha inválida: ${r}`);
+    return 0;
+}
+
+/**
+ * Converte tabuleiro 4xN do motor para array linear de peças
+ * IMPORTANTE: Segue o padrão serpentine (não é row-major!)
+ */
+function flattenBoard(engine, initialNick, playersData) {
+    const board = engine.getBoard();
+    const cols = engine.getColumns();
+    const totalCells = 4 * cols;
+    const pieces = new Array(totalCells).fill(null);
+    
+    // Percorrer cada índice linear e buscar a peça correspondente
+    for (let linearIndex = 0; linearIndex < totalCells; linearIndex++) {
+        const { row, col } = indexToCoords(linearIndex, cols);
+        const piece = board[row][col];
+        
+        if (piece) {
+            // Determinar cor baseada no player ID do motor
+            const color = (piece.player === 1) ? 'yellow' : 'blue';
+            
+            pieces[linearIndex] = {
+                color: color,
+                inMotion: piece.hasMoved,
+                reachedLastRow: piece.hasReachedEnd
+            };
+        }
+    }
+    
+    return pieces;
+}
+
+/**
+ * Reseta o timer de inatividade do jogo
+ */
+function resetGameTimer(game) {
+    // Limpa timer antigo se existir
+    if (gameTimers.has(game.id)) {
+        clearTimeout(gameTimers.get(game.id));
+    }
+    
+    // Cria novo timer
+    const timerId = setTimeout(() => {
+        console.log(`[TIMEOUT] Jogo ${game.id} expirou`);
+        
+        // Conceder vitória ao adversário (quem NÃO tem a vez)
+        const playerNicks = Object.keys(game.playersData);
+        const opponent = playerNicks.find(nick => nick !== game.turn);
+        
+        if (opponent) {
+            game.winner = opponent;
+            
+            // Atualizar stats
+            const wUser = users.find(u => u.nick === opponent);
+            if (wUser) { wUser.wins++; wUser.games++; }
+            
+            const lUser = users.find(u => u.nick === game.turn);
+            if (lUser) { lUser.games++; }
+            
+            notifyClients(game);
+            saveData();
+        }
+        
+        gameTimers.delete(game.id);
+    }, GAME_TIMEOUT_MS);
+    
+    gameTimers.set(game.id, timerId);
 }
 
 function getBody(req) {
@@ -67,74 +188,67 @@ function validateUser(nick, password) {
     return user.passHash === getHash(password);
 }
 
-// Converte índice linear para {row, col} (Lógica do Tabuleiro)
-function indexToCoords(index, cols) {
-    if (index < cols) return { row: 3, col: index }; // Linha 3 (P1)
-    if (index < cols * 2) return { row: 2, col: (cols - 1) - (index - cols) };
-    if (index < cols * 3) return { row: 1, col: index - cols * 2 };
-    return { row: 0, col: (cols - 1) - (index - cols * 3) }; // Linha 0 (P2)
-}
-
-// Achata o tabuleiro para enviar no SSE (propriedade 'pieces')
-// Retorna peças com papel (initial/opponent) baseado em quem é o jogador inicial
-function flattenBoard(engine, initialNick, playersData) {
-    const board = engine.getBoard();
-    const cols = engine.getColumns();
-    const pieces = [];
-    
-    for(let r=0; r<4; r++){
-        for(let c=0; c<cols; c++){
-            const p = board[r][c];
-            if(p) {
-                // Player 1 (engine) = initial; Player 2 (engine) = opponent
-                const playerRole = (p.player === 1) ? 'initial' : 'opponent';
-                const playerNick = (p.player === 1) 
-                    ? Object.keys(playersData).find(n => playersData[n] === 'yellow')
-                    : Object.keys(playersData).find(n => playersData[n] === 'blue');
-                
-                pieces.push({
-                    player: playerRole,  // 'initial' ou 'opponent'
-                    row: r, 
-                    col: c,
-                    inMotion: p.hasMoved,          // Importante para animações
-                    reachedLastRow: p.hasReachedEnd, // Importante para rotação
-                    color: p.player === 1 ? 'yellow' : 'blue'  // Extra para UI
-                });
-            }
-        }
-    }
-    return pieces;
-}
-
 // Requisito: Enviar updates via Server-Sent Events (SSE)
 function notifyClients(game, lastCell = undefined) {
-    if (!game.responses) return;
+    if (!game.responses || !game.engine) return;
     
     const engine = game.engine;
-    const initialNick = Object.keys(game.playersData)[0];
+    const playerNicks = Object.keys(game.playersData);
+    const initialNick = playerNicks[0]; // Primeiro jogador (Yellow)
     
-    // Constrói objeto conforme tabela "Respostas"
+    // Construir array de peças compatível com cliente
+    const pieces = flattenBoard(engine, initialNick, game.playersData);
+    
+    // Determinar step baseado em seleção
+    const selected = engine.getSelected?.();
+    let step = 'from'; // Padrão: escolher peça
+    let selectedCells = [];
+    
+    if (selected) {
+        step = 'to'; // Peça selecionada, escolher destino
+        
+        // Converter selected para índice linear
+        const selectedIdx = coordsToIndex(selected.row, selected.col, engine.getColumns());
+        selectedCells.push(selectedIdx);
+        
+        // 🔥 USA cache em vez de recalcular (evita reselecionar)
+        const validMoves = game.validMovesCache || [];
+        validMoves.forEach(move => {
+            const idx = coordsToIndex(move.row, move.col, engine.getColumns());
+            selectedCells.push(idx);
+        });
+    }
+    
+    // Construir objeto de resposta
     const messageData = {
+        game: game.id,
         winner: game.winner || undefined,
         turn: game.turn,
         initial: initialNick,
-        board: engine ? engine.getBoard() : [],
-        pieces: engine ? flattenBoard(engine, initialNick, game.playersData) : [],
-        dice: (engine && engine.getDice()) ? { value: engine.getDice() } : undefined,
-        // Define se é para selecionar ('from') ou mover ('to')
-        step: (engine && engine.getSelected()) ? 'to' : 'from',
-        selected: (engine && engine.getSelected()) ? engine.getSelected() : undefined,
-        // Lógica simplificada de mustPass
-        mustPass: (engine && engine.canPass && engine.canPass()) ? game.turn : undefined,
-        players: game.playersData, 
-        game: game.id,
-        cell: lastCell // Requisito: "casa movida"
+        players: game.playersData,
+        pieces: pieces,
+        dice: engine.getDice() ? { 
+            value: engine.getDice(),
+            keepPlaying: [1, 4, 6].includes(engine.getDice())
+        } : undefined,
+        step: step,
+        selected: selectedCells.length > 0 ? selectedCells : undefined,
+        mustPass: (engine.canPass && engine.canPass()) ? game.turn : undefined,
+        cell: lastCell
     };
 
     const message = `data: ${JSON.stringify(messageData)}\n\n`;
     
-    // Envia para todas as conexões abertas deste jogo
-    game.responses.forEach(client => client.res.write(message));
+    // Filtrar clientes mortos
+    game.responses = game.responses.filter(client => {
+        try {
+            client.res.write(message);
+            return true; // Cliente ainda conectado
+        } catch (err) {
+            console.error('[SSE] Cliente desconectado:', client.nick);
+            return false; // Remover da lista
+        }
+    });
 }
 
 
@@ -159,6 +273,13 @@ const server = http.createServer(async (req, res) => {
         if (!game) {
             res.writeHead(400, headers);
             res.end(JSON.stringify({ error: "Jogo inválido" }));
+            return;
+        }
+
+        // ✅ VALIDAR: Nick pertence ao jogo
+        if (!game.playersData[nick]) {
+            res.writeHead(403, headers);
+            res.end(JSON.stringify({ error: "Não pertences a este jogo" }));
             return;
         }
 
@@ -255,20 +376,33 @@ const server = http.createServer(async (req, res) => {
                         // Juntar ao jogo (Player 2 - Blue)
                         if (!game.playersData[body.nick]) {
                            game.playersData[body.nick] = "blue"; 
-                           // Inicia o motor apenas com 2 jogadores
+                           
+                           // ✅ CRIAR MOTOR AQUI
                            game.engine = createTabEngine({ columns: size });
+                           
+                           // ✅ Definir mapeamento de cores
+                           const p1Nick = Object.keys(game.playersData)[0];
+                           const p2Nick = body.nick;
+                           game.colorMap = {
+                               [p1Nick]: 1, // Yellow = Player 1 no motor
+                               [p2Nick]: 2  // Blue = Player 2 no motor
+                           };
+                           
                            notifyClients(game); 
                            saveData();
                         }
                     } else {
-                        // Criar novo jogo (Player 1 - Yellow)
+                        // Criar novo jogo (Player 1 aguarda)
                         // Requisito: ID hash baseado em caraterísticas + tempo
                         const id = getHash(body.nick + Date.now() + group);
                         game = {
                             id, group, size,
                             playersData: { [body.nick]: "yellow" }, 
                             turn: body.nick, 
-                            winner: null, engine: null
+                            winner: null, 
+                            engine: null, // Motor só é criado quando 2 players juntam-se
+                            colorMap: null,
+                            createdAt: Date.now() // ✅ Timestamp para cleanup
                         };
                         games.push(game);
                         saveData();
@@ -294,6 +428,12 @@ const server = http.createServer(async (req, res) => {
                     const lUser = users.find(u => u.nick === body.nick);
                     if (lUser) lUser.games++;
 
+                    // ✅ Limpar gameTimers
+                    if (gameTimers.has(gLeave.id)) {
+                        clearTimeout(gameTimers.get(gLeave.id));
+                        gameTimers.delete(gLeave.id);
+                    }
+
                     notifyClients(gLeave);
                     saveData();
                     break;
@@ -307,48 +447,75 @@ const server = http.createServer(async (req, res) => {
                     if (gNotify.turn !== body.nick) throw { status: 400, msg: "Não é a tua vez" };
 
                     const cellIndex = parseInt(body.cell);
-                    // Requisito: Verificar intervalo do cell
                     if (isNaN(cellIndex) || cellIndex < 0) throw { status: 400, msg: "Célula inválida" };
 
-                    // Converte índice linear para coordenadas do motor
+                    // ✅ Converter índice para coordenadas
                     const coords = indexToCoords(cellIndex, parseInt(gNotify.size));
+                    const { row, col } = coords;
                     
                     try {
                         const engine = gNotify.engine;
+                        const selected = engine.getSelected?.(); // Verifica se há peça selecionada
                         
-                        // Lógica: Selecionar vs Mover
-                        if (!engine.getSelected()) {
-                            // Tenta selecionar
-                            const moves = engine.getValidMoves(coords.row, coords.col);
-                            if (moves.length === 0) throw new Error("Seleção inválida");
-                        } else {
-                            // Tenta mover
-                            const result = engine.moveSelectedTo(coords.row, coords.col);
+                        if (!selected) {
+                            // ========== PASSO 1: SELECIONAR PEÇA ==========
+                            const moves = engine.getValidMoves(row, col);
                             
-                            // Gestão de turno
+                            if (moves.length === 0) {
+                                throw new Error("Peça sem movimentos válidos");
+                            }
+                            
+                            // 🔥 GUARDA destinos no cache
+                            gNotify.validMovesCache = moves;
+                            
+                            // ✅ Peça selecionada com sucesso
+                            // Motor guarda internamente, apenas notificamos
+                            notifyClients(gNotify, cellIndex);
+                            
+                        } else {
+                            // ========== PASSO 2: MOVER PEÇA ==========
+                            const result = engine.moveSelectedTo(row, col);
+                            
+                            // 🔥 LIMPA cache
+                            delete gNotify.validMovesCache;
+                            
+                            // ✅ Gerir turno
                             if (!result.extraTurn) {
-                                const p1 = Object.keys(gNotify.playersData)[0];
-                                const p2 = Object.keys(gNotify.playersData)[1];
+                                const playerNicks = Object.keys(gNotify.playersData);
+                                const p1 = playerNicks[0];
+                                const p2 = playerNicks[1];
                                 gNotify.turn = (gNotify.turn === p1) ? p2 : p1;
                             }
                             
-                            // Verificação de Vitória
+                            // ✅ Reset timer de inatividade
+                            resetGameTimer(gNotify);
+                            
+                            // ✅ Verificar vitória
                             const winnerCode = engine.checkWinner();
                             if (winnerCode) {
                                 const p1 = Object.keys(gNotify.playersData)[0];
                                 const p2 = Object.keys(gNotify.playersData)[1];
                                 gNotify.winner = (winnerCode === 1) ? p1 : p2;
                                 
-                                // Atualiza Stats
-                                const wU = users.find(u => u.nick === gNotify.winner); if(wU){ wU.wins++; wU.games++; }
+                                // Atualizar stats
+                                const wU = users.find(u => u.nick === gNotify.winner);
+                                if(wU){ wU.wins++; wU.games++; }
                                 const lNick = (gNotify.winner === p1) ? p2 : p1;
-                                const lU = users.find(u => u.nick === lNick); if(lU){ lU.games++; }
+                                const lU = users.find(u => u.nick === lNick);
+                                if(lU){ lU.games++; }
                                 saveData();
+                                
+                                // Limpar timer
+                                if (gameTimers.has(gNotify.id)) {
+                                    clearTimeout(gameTimers.get(gNotify.id));
+                                    gameTimers.delete(gNotify.id);
+                                }
                             }
+                            
+                            // ✅ Notificar clientes
+                            notifyClients(gNotify, cellIndex);
                         }
                         
-                        // Envia update com a célula afetada
-                        notifyClients(gNotify, cellIndex); 
                     } catch (err) {
                         throw { status: 400, msg: err.message };
                     }
@@ -360,9 +527,17 @@ const server = http.createServer(async (req, res) => {
                     if (!gRoll || !gRoll.engine) throw { status: 400, msg: "Jogo não ativo" };
                     if (gRoll.turn !== body.nick) throw { status: 400, msg: "Não é a tua vez" };
                     
-                    if (gRoll.engine.getDice() !== null) throw { status: 400, msg: "Já lançaste o dado" };
+                    // ✅ Validar se já tem dado
+                    if (gRoll.engine.getDice() !== null) {
+                        throw { status: 400, msg: "Já lançaste o dado" };
+                    }
 
+                    // ✅ Lançar dado no motor
                     gRoll.engine.rollDice();
+                    
+                    // ✅ Reset timer de inatividade
+                    resetGameTimer(gRoll);
+                    
                     notifyClients(gRoll);
                     break;
 
@@ -373,11 +548,26 @@ const server = http.createServer(async (req, res) => {
                     if (gPass.turn !== body.nick) throw { status: 400, msg: "Não é a tua vez" };
 
                     try {
-                        gPass.engine.passTurn(); 
+                        // ✅ Validar se pode passar
+                        if (gPass.engine.getDice() === null) {
+                            throw new Error("Tem de lançar o dado antes de passar");
+                        }
                         
-                        const p1Pass = Object.keys(gPass.playersData)[0];
-                        const p2Pass = Object.keys(gPass.playersData)[1];
-                        gPass.turn = (gPass.turn === p1Pass) ? p2Pass : p1Pass;
+                        if (!gPass.engine.canPass()) {
+                            throw new Error("Ainda há jogadas possíveis");
+                        }
+                        
+                        // ✅ Passar turno no motor
+                        gPass.engine.passTurn();
+                        
+                        // ✅ Trocar turno (passTurn() já trata jogadas extra internamente)
+                        const playerNicks = Object.keys(gPass.playersData);
+                        const p1 = playerNicks[0];
+                        const p2 = playerNicks[1];
+                        gPass.turn = gPass.engine.getCurrentPlayer() === 1 ? p1 : p2;
+                        
+                        // ✅ Reset timer
+                        resetGameTimer(gPass);
                         
                         notifyClients(gPass);
                     } catch(err) {
@@ -407,5 +597,24 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: "Endpoint não encontrado" }));
     }
 });
+
+// Limpeza periódica de jogos zombie (sem motor há mais de 5min)
+setInterval(() => {
+    const now = Date.now();
+    const before = games.length;
+    
+    games = games.filter(game => {
+        if (!game.engine && game.createdAt && (now - game.createdAt > LOBBY_TIMEOUT_MS)) {
+            console.log(`[CLEANUP] Removendo jogo zombie: ${game.id}`);
+            return false;
+        }
+        return true;
+    });
+    
+    // 🔥 Persiste alterações se jogos foram removidos
+    if (games.length < before) {
+        saveData();
+    }
+}, 60 * 1000); // Verifica a cada 1 minuto
 
 server.listen(PORT, () => console.log(`Servidor a correr na porta ${PORT}`));

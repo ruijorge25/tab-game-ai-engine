@@ -864,7 +864,14 @@ export function renderGameView(container) {
       state.session.gameId,
       state.session.nick,
       onServerUpdate,
-      (err) => { toast(err, 'error'); }
+      (err) => { 
+          toast(err, 'error');
+          // ✅ Redirecionar para menu após erro crítico
+          setTimeout(() => {
+              state.session.gameId = null;
+              navigateTo('menu');
+          }, 3000);
+      }
     );
   } else {
     updateHUDLocal();

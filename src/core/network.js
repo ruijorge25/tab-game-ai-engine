@@ -1,6 +1,8 @@
 // src/core/network.js
 
-const BASE_URL = 'http://twserver.alunos.dcc.fc.up.pt:8134';
+// ✅ Fallback para desenvolvimento local
+const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) 
+  || 'http://twserver.alunos.dcc.fc.up.pt:8134';
 
 // Função genérica para pedidos POST
 async function post(endpoint, data) {
