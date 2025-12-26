@@ -32,13 +32,13 @@ npm run dev      # Desenvolvimento
 npm run build    # Produção
 Configurar .env se necessário:
 envVITE_API_URL=http://localhost:8134
-```
 
----
 
-## 🎲 Como Jogar
 
-### Regras Básicas
+
+ 🎲 Como Jogar
+
+Regras Básicas
 
 1. **Dado de Paus** - 4 paus com faces claras/escuras:
    - 0 ou 4 claros → **6 ou 4** (joga novamente)
@@ -53,15 +53,15 @@ envVITE_API_URL=http://localhost:8134
 
 5. **Vitória** - Eliminar todas as peças adversárias
 
-### ⌨️ Atalhos
+⌨️ Atalhos
 - `Espaço` - Lançar dado
 - `H` - Ver dica
 - `R` - Regras
 - `Esc` - Sair/Fechar
 
----
 
-## 🛠️ Tecnologias
+
+🛠️ Tecnologias
 
 **Frontend**
 - Vanilla JavaScript (ES6+)
@@ -73,10 +73,10 @@ envVITE_API_URL=http://localhost:8134
 - Server-Sent Events (SSE)
 - Persistência com File System
 
----
 
-## 📁 Estrutura
-```
+
+📁 Estrutura
+
 ├── src/
 │   ├── core/          # Estado, router, network, animações
 │   ├── game/          # Motor do jogo + IA
@@ -101,6 +101,6 @@ EndpointMétodoDescrição/registerPOSTAutenticação/joinPOSTEntrar/criar jogo/
 📝 Licença
 Projeto académico - Tecnologias Web
 
-<div align="center">
+
 Desenvolvido com ☕ para a cadeira de Tecnologias Web
-</div>
+
