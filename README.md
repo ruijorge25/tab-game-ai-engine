@@ -75,19 +75,6 @@ Regras Básicas
 
 
 
-📁 Estrutura
-
-├── src/
-│   ├── core/          # Estado, router, network, animações
-│   ├── game/          # Motor do jogo + IA
-│   ├── ui/            # Componentes visuais
-│   └── views/         # Páginas SPA
-├── RIP/
-│   ├── index.js       # Servidor HTTP
-│   ├── game/          # Motor do jogo (compartilhado)
-│   └── data/          # Persistência JSON
-└── .env               # Configuração
-
 🎯 Sistema de IA
 
 Fácil - Movimentos aleatórios
