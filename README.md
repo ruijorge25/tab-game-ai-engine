@@ -1,93 +1,154 @@
-Tâb é um jogo de estratégia milenar do Médio Oriente. O objetivo é capturar todas as peças do adversário movendo-as estrategicamente pelo tabuleiro de acordo com o lançamento de dados de paus tradicionais.
+# Tâb Game
 
-✨ Características
-🎮 Modos de Jogo
+**Tâb** is a traditional Middle Eastern strategy board game where players compete to capture all opponent pieces by moving them strategically across the board based on stick-dice rolls.
 
-Local vs IA - 3 níveis de dificuldade (Fácil, Médio, Difícil)
-Multiplayer Online - Matchmaking automático com sincronização em tempo real
+This project is a modern digital implementation featuring AI opponents, online multiplayer, customization options, and real-time synchronization.
 
-🎨 Personalização
+---
 
-4 temas visuais (Deserto, Noite no Deserto, Halloween, Natal)
-Animações temáticas com Canvas
-Sistema completo de áudio (música + SFX)
-Tabuleiros configuráveis (7 a 15 colunas)
+## Features
 
-📊 Estatísticas
+### Game Modes
 
-Rankings locais e do servidor
-Histórico de partidas
-Sistema de dicas com justificações
+- Local vs AI with 3 difficulty levels:
+  - Easy
+  - Medium
+  - Hard
+- Online Multiplayer with automatic matchmaking
+- Real-time synchronization between players
 
+---
 
-🚀 Instalação
-Backend
-bashcd RIP
+### Customization
+
+- 4 visual themes:
+  - Desert
+  - Desert Night
+  - Halloween
+  - Christmas
+- Canvas-based thematic animations
+- Full audio system (music + sound effects)
+- Configurable board size (7 to 15 columns)
+
+---
+
+### Statistics System
+
+- Local and server rankings
+- Match history tracking
+- Hint system with move explanations
+
+---
+
+## Installation
+
+### Backend
+
+```bash
+cd RIP
 npm install
 npm start
-Servidor inicia na porta 8134.
-Frontend
-bashnpm install
-npm run dev      # Desenvolvimento
-npm run build    # Produção
-Configurar .env se necessário:
-envVITE_API_URL=http://localhost:8134
+```
 
+Server runs on port:
 
+```
+8134
+```
 
+### Frontend
 
- 🎲 Como Jogar
+```bash
+npm install
+npm run dev     # Development
+npm run build   # Production
+```
 
-Regras Básicas
+If needed, configure:
 
-1. **Dado de Paus** - 4 paus com faces claras/escuras:
-   - 0 ou 4 claros → **6 ou 4** (joga novamente)
-   - 1 claro → **Tâb** (joga novamente)
-   - 2-3 claros → **2-3** casas
+```
+VITE_API_URL=http://localhost:8134
+```
 
-2. **Primeira Jogada** - Precisa tirar **Tâb (1)** para sair
+---
 
-3. **Movimento** - Percurso em serpentina pelo tabuleiro 4×N
+## How to Play
 
-4. **Captura** - Cair na casa do adversário elimina a peça
+### Basic Rules
 
-5. **Vitória** - Eliminar todas as peças adversárias
+#### Stick Dice
 
-⌨️ Atalhos
-- `Espaço` - Lançar dado
-- `H` - Ver dica
-- `R` - Regras
-- `Esc` - Sair/Fechar
+The game uses 4 traditional sticks:
 
+- 0 or 4 light sides → move 6 or 4 squares (extra turn)
+- 1 light side → **Tâb** (extra turn)
+- 2–3 light sides → move 2–3 squares
 
+#### First Move
 
-🛠️ Tecnologias
+A player must roll **Tâb (1)** to enter the board.
 
-**Frontend**
+#### Movement
+
+Pieces follow a **serpentine path** across a 4×N board.
+
+#### Capture
+
+Landing on an opponent’s square captures their piece.
+
+#### Victory Condition
+
+Capture all opponent pieces to win the match.
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space | Roll dice |
+| H | Show hint |
+| R | Show rules |
+| Esc | Exit / Close menu |
+
+---
+
+## Technologies
+
+### Frontend
+
 - Vanilla JavaScript (ES6+)
 - Vite
-- Canvas API para animações
+- Canvas API for animations
 
-**Backend**
-- Node.js HTTP nativo
+### Backend
+
+- Node.js (native HTTP server)
 - Server-Sent Events (SSE)
-- Persistência com File System
+- File system persistence
 
+---
 
+## AI System
 
-🎯 Sistema de IA
+- Easy → Random moves
+- Medium → Capture-oriented heuristic strategy
+- Hard → Strategic evaluation with probabilistic threat analysis
 
-Fácil - Movimentos aleatórios
-Médio - Heurística focada em capturas
-Difícil - Avaliação estratégica com análise de risco/ameaça probabilística
+---
 
+## Main API Endpoints
 
-🌐 API Principal
-EndpointMétodoDescrição/registerPOSTAutenticação/joinPOSTEntrar/criar jogo/notifyPOSTEnviar jogada/updateGETStream SSE de atualizações/rankingPOSTTop 10 jogadores
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /register | POST | Authentication |
+| /join | POST | Join/create match |
+| /notify | POST | Send move |
+| /update | GET | SSE updates stream |
+| /ranking | POST | Top 10 players |
 
-📝 Licença
-Projeto académico - Tecnologias Web
+---
 
+## License
 
-Desenvolvido com ☕ para a cadeira de Tecnologias Web
-
+Academic project developed for the **Web Technologies** course.
